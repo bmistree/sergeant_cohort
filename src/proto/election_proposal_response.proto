@@ -1,0 +1,9 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "ElectionProposalResponseProto";
+
+
+message ElectionProposalResponse
+{
+    required uint64 proposed_view_number = 1;
+    required uint64 node_id = 2;
+}
