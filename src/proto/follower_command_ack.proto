@@ -1,0 +1,7 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "FollowerCommandAckProto";
+
+message FollowerCommandAck
+{
+    required uint64 sequence_number = 1;
+}
