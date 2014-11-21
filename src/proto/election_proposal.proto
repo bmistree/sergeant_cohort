@@ -1,0 +1,12 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "ElectionProposalProto";
+
+/**
+   By default, the node that submits an election proposal is
+   nominating itself to become leader.
+ */
+
+message ElectionProposal
+{
+    required uint64 next_proposed_view_number = 1;
+}
