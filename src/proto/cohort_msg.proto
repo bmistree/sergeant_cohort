@@ -1,0 +1,8 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "CohortMessageProto";
+
+message CohortMessage
+{
+    // heartbeat is empty
+    required uint64 view_number = 1;
+}
