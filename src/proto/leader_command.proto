@@ -8,10 +8,11 @@ option java_outer_classname = "LeaderCommandProto";
 
 message LeaderCommand
 {
-    required uint64 sequence_number = 1;
+    required uint64 view_number = 1;
+    required uint64 sequence_number = 2;
     
     // Likely a serialized protocol buffer for another message type.
     // Keeping this as an arbitrary blob allows reusing this
     // leader-election code to send arbitrary messages.
-    required bytes command_blob = 2;
+    required bytes command_blob = 3;
 }

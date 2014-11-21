@@ -1,8 +1,11 @@
 option java_package = "ProtocolLibs";
 option java_outer_classname = "CohortMessageProto";
 
+import "leader_command.proto";
+import "follower_command_ack.proto";
+
 message CohortMessage
 {
-    // heartbeat is empty
-    required uint64 view_number = 1;
+    optional LeaderCommand leader_command = 1;
+    optional FollowerCommandAck follower_command_ack = 2;
 }
