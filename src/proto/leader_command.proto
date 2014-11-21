@@ -1,0 +1,17 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "LeaderCommandProto";
+
+/**
+   Leaders send arbitrary commands to all clients.  The clients
+   receive commands and ack them.
+ */
+
+message LeaderCommand
+{
+    required uint64 sequence_number = 1;
+    
+    // Likely a serialized protocol buffer for another message type.
+    // Keeping this as an arbitrary blob allows reusing this
+    // leader-election code to send arbitrary messages.
+    required bytes command_blob = 2;
+}
