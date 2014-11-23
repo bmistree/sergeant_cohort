@@ -3,9 +3,13 @@ option java_outer_classname = "CohortMessageProto";
 
 import "leader_command.proto";
 import "follower_command_ack.proto";
+import "election_proposal.proto";
+import "election_proposal_response.proto";
 
 message CohortMessage
 {
     optional LeaderCommand leader_command = 1;
     optional FollowerCommandAck follower_command_ack = 2;
+    optional ElectionProposal election_proposal = 3;
+    optional ElectionProposalResponse election_proposal_response = 4;
 }
