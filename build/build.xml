@@ -13,6 +13,9 @@
     <property name="classes_dir" location="${build_dir}/classes"/>
     <property name="java_src_dir" location="${build_dir}/../src/java/"/>
 
+    <property name="deps_dir" location="${build_dir}/../deps/"/>
+    <property
+        name="protobuf_jar" location="${deps_dir}/protobuf-java-2.5.0.jar"/>
     
     <!-- Build targets -->
 
@@ -32,6 +35,7 @@
         <javac
             srcdir="${java_src_dir}"
             destdir="${classes_dir}"
+            classpath="${protobuf_jar}"
             debug="true"
             debuglevel="lines,vars,source"
             includeantruntime="false" />
