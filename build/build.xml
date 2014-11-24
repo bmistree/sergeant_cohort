@@ -1,0 +1,46 @@
+<project name="SergeantCohort" default="compile" basedir=".">
+  
+    <description>
+        Build files for SergeantCohort project.
+    </description>
+
+    <dirname
+        property="build_dir"
+        file="${ant.file.SergeantCohort}"
+        />
+    
+    <!-- global properties for this build file -->
+    <property name="classes_dir" location="${build_dir}/classes"/>
+    <property name="java_src_dir" location="${build_dir}/../src/java/"/>
+
+    
+    <!-- Build targets -->
+
+    
+    <!-- set up build directories for test -->
+    <target name="init" description="setup build directories">
+        <echo message="Setting up build directories for tests"/>
+        <mkdir dir="${classes_dir}"/>
+    </target>
+
+    <!-- compile directory -->    
+    <target
+        name="compile"
+        depends="init"
+        description="compile java src">
+      
+        <javac
+            srcdir="${java_src_dir}"
+            destdir="${classes_dir}"
+            debug="true"
+            debuglevel="lines,vars,source"
+            includeantruntime="false" />
+    </target>
+
+    <!-- Delete the build directories -->
+    <target name="clean" description="get rid of missing directories">
+        <delete dir="${classes_dir}"/>
+    </target>
+
+    
+</project>
