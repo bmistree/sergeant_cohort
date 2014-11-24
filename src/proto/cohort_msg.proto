@@ -5,6 +5,7 @@ import "leader_command.proto";
 import "follower_command_ack.proto";
 import "election_proposal.proto";
 import "election_proposal_response.proto";
+import "heartbeat.proto";
 
 message CohortMessage
 {
@@ -12,4 +13,5 @@ message CohortMessage
     optional FollowerCommandAck follower_command_ack = 2;
     optional ElectionProposal election_proposal = 3;
     optional ElectionProposalResponse election_proposal_response = 4;
+    optional Heartbeat heartbeat = 5;
 }
