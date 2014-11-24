@@ -1,5 +1,5 @@
 option java_package = "ProtocolLibs";
-option java_outer_classname = "CohortMessageProto";
+option java_outer_classname = "HeartbeatProto";
 
 message Heartbeat
 {

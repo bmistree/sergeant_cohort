@@ -2,6 +2,10 @@ package SergeantCohort;
 
 import java.io.IOException;
 
+import ProtocolLibs.CohortMessageProto.CohortMessage;
+import ProtocolLibs.HeartbeatProto.Heartbeat;
+
+
 public class TCPCohortConnection extends CohortConnectionBase
 {
     /**
@@ -27,6 +31,16 @@ public class TCPCohortConnection extends CohortConnectionBase
         this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
     }
 
+    /**
+       @param cohort_message_to_send --- The message to send to other
+       side.
+     */
+    protected void send_message(CohortMessage cohort_message_to_send)
+    {
+        // FIXME: Must fill in
+        Util.force_assert(
+            "FIXME: Must fill in send_message of TCPCohortConnection.");
+    }
     
     /************************ ICohortConnection overrides ***********/
     @Override
@@ -43,8 +57,11 @@ public class TCPCohortConnection extends CohortConnectionBase
     @Override
     public void send_heartbeat(long view_number) throws IOException
     {
-        // FIXME: Must fill in
-        Util.force_assert(
-            "FIXME: Must fill in send_heartbeat of TCPCohortConnection.");
+        Heartbeat.Builder heartbeat = Heartbeat.newBuilder();
+        heartbeat.setViewNumber(view_number);
+
+        CohortMessage.Builder msg = CohortMessage.newBuilder();
+        msg.setHeartbeat(heartbeat);
+        send_message(msg.build());
     }
 }

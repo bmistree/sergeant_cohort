@@ -17,6 +17,14 @@ public abstract class CohortConnectionBase implements ICohortConnection
         new HashSet<ICohortMessageListener>();
     protected final ReentrantLock message_listener_lock = new ReentrantLock();
 
+    protected CohortConnectionState state =
+        CohortConnectionState.CONNECTION_DOWN;
+    protected final ReentrantLock state_lock = new ReentrantLock();
+    protected enum CohortConnectionState
+    {
+        CONNECTION_DOWN, CONNECTION_UP;
+    }
+    
     /************************ ICohortConnection overrides *****************/
     public abstract void start_service();
     public abstract void send_heartbeat(long view_number) throws IOException;
