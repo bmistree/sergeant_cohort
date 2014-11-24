@@ -5,6 +5,11 @@ import java.io.IOException;
 public interface ICohortConnection
 {
     /**
+       Actually begin the service monitoring.
+     */
+    public void start_service();
+    
+    /**
        Send heartbeat message to other side.
      */
     public void send_heartbeat(long view_number) throws IOException;
