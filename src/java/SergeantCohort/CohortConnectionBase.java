@@ -1,5 +1,8 @@
 package SergeantCohort;
 
+import java.util.List;
+import java.util.ArrayList;
+
 import java.util.Set;
 import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantLock;
@@ -12,6 +15,8 @@ import ProtocolLibs.HeartbeatProto.Heartbeat;
 
 public abstract class CohortConnectionBase implements ICohortConnection
 {
+    private final static int MAX_NUM_OUTSTANDING_UNACKED_MESSAGES = 100;
+    
     protected final Set<ICohortConnectionListener> connection_listener_set =
         new HashSet<ICohortConnectionListener>();
     protected final ReentrantLock connection_listener_lock =
@@ -29,6 +34,16 @@ public abstract class CohortConnectionBase implements ICohortConnection
         CONNECTION_DOWN, CONNECTION_UP;
     }
 
+    /**
+       The last sequence number we sent to the other side.
+     */
+    protected long last_sequence_number_sent = 0;
+    protected long last_sequence_number_received = 0;
+    protected final List<CohortMessage.Builder> unacked_sent_messages =
+        new ArrayList<CohortMessage.Builder>();
+    protected final ReentrantLock msg_queue_lock = new ReentrantLock();
+
+    
     /**
        Should get inerrupted whenever we receive a heartbeat message
        from alternate side.  Gets set in constructor and actually gets
@@ -104,7 +119,48 @@ public abstract class CohortConnectionBase implements ICohortConnection
        will definitely be sent as soon as can make connection.  false
        if application itself should handle retrying.
      */
-    protected abstract boolean send_message(CohortMessage msg);
+    protected abstract void connection_specific_send_message(
+        CohortMessage.Builder msg);
+
+    protected boolean send_message (CohortMessage.Builder msg)
+    {
+        msg_queue_lock.lock();
+        try
+        {
+            if (unacked_sent_messages.size() >=
+                MAX_NUM_OUTSTANDING_UNACKED_MESSAGES)
+            {
+                return false;
+            }
+
+            ++last_sequence_number_sent;
+            msg.setSequenceNumber(last_sequence_number_sent);
+            unacked_sent_messages.add(msg);
+            connection_specific_send_message(msg);
+            return true;
+        }
+        finally
+        {
+            msg_queue_lock.unlock();
+        }
+    }
+
+
+    /**
+       @returns the sequence number to acknowledge.
+     */
+    protected long get_sequence_number_to_ack()
+    {
+        try
+        {
+            msg_queue_lock.lock();
+            return last_sequence_number_received;
+        }
+        finally
+        {
+            msg_queue_lock.unlock();
+        }
+    }
     
     
     /**
@@ -189,7 +245,7 @@ public abstract class CohortConnectionBase implements ICohortConnection
 
         CohortMessage.Builder msg = CohortMessage.newBuilder();
         msg.setHeartbeat(heartbeat);
-        return send_message(msg.build());
+        return send_message(msg);
     }
 
     /**

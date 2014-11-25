@@ -23,20 +23,15 @@ public class TCPCohortConnection extends CohortConnectionBase
     }
 
     /**
-       @param cohort_message_to_send --- The message to send to other
-       side.
-       
-       @returns true if the message has been queued to be sent and
-       will definitely be sent as soon as can make connection.  false
-       if application itself should handle retrying.
+       @param msg --- The message to send to other side.
      */
     @Override
-    protected boolean send_message(CohortMessage cohort_message_to_send)
+    protected void connection_specific_send_message(
+        CohortMessage.Builder msg)
     {
         // FIXME: Must fill in
         Util.force_assert(
             "FIXME: Must fill in send_message of TCPCohortConnection.");
-        return false;
     }
     
     /************************ ICohortConnection overrides ***********/
