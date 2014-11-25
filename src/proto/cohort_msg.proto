@@ -9,9 +9,14 @@ import "heartbeat.proto";
 
 message CohortMessage
 {
-    optional LeaderCommand leader_command = 1;
-    optional FollowerCommandAck follower_command_ack = 2;
-    optional ElectionProposal election_proposal = 3;
-    optional ElectionProposalResponse election_proposal_response = 4;
-    optional Heartbeat heartbeat = 5;
+    // First message should have a sequence number of one.  And an ack
+    // number of zero.  Acks are cumulative.
+    required uint64 sequence_number = 1;
+    required uint64 ack_number = 2;
+    
+    optional LeaderCommand leader_command = 3;
+    optional FollowerCommandAck follower_command_ack = 4;
+    optional ElectionProposal election_proposal = 5;
+    optional ElectionProposalResponse election_proposal_response = 6;
+    optional Heartbeat heartbeat = 7;
 }
