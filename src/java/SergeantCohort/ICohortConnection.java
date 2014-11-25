@@ -10,11 +10,6 @@ public interface ICohortConnection
     public void start_service();
     
     /**
-       Send heartbeat message to other side.
-     */
-    public void send_heartbeat(long view_number) throws IOException;
-    
-    /**
        Listen for the connection's timing out.
      */
     public void add_connection_listener(ICohortConnectionListener listener);

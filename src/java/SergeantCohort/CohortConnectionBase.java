@@ -6,6 +6,10 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import java.io.IOException;
 
+import ProtocolLibs.CohortMessageProto.CohortMessage;
+import ProtocolLibs.HeartbeatProto.Heartbeat;
+
+
 public abstract class CohortConnectionBase implements ICohortConnection
 {
     protected final Set<ICohortConnectionListener> connection_listener_set =
@@ -24,10 +28,145 @@ public abstract class CohortConnectionBase implements ICohortConnection
     {
         CONNECTION_DOWN, CONNECTION_UP;
     }
+
+    /**
+       Should get inerrupted whenever we receive a heartbeat message
+       from alternate side.  Gets set in constructor and actually gets
+       started when start method is called.
+     */
+    protected final Thread heartbeat_watchdog_thread;
+
+
+    /**
+       If we do not receive a heartbeat message in this period of ms,
+       then we determine that the connection is dead and notify
+       connection listeners.
+     */
+    protected final int heartbeat_timeout_period_ms;
+
+    /**
+       TCPCohortConnection should send a heartbeat this frequently.
+     */
+    protected final int heartbeat_send_period_ms;
+
+    protected final ILastViewNumberSupplier view_number_supplier;
+    
+    /**
+       @param heartbeat_timeout_period_ms --- {@link
+       CohortConnectionBase#heartbeat_timeout_period_ms}
+
+       @param heartbeat_send_period_ms --- {@link
+       CohortConnectionBase#heartbeat_send_period_ms}
+     */
+    public CohortConnectionBase(
+        int heartbeat_timeout_period_ms,int heartbeat_send_period_ms,
+        ILastViewNumberSupplier view_number_supplier)
+    {
+        this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
+        this.heartbeat_send_period_ms = heartbeat_send_period_ms;
+        this.view_number_supplier = view_number_supplier;
+
+        // Initializes heartbeat watchdog thread, but does not start
+        // it.
+        final CohortConnectionBase this_ptr = this;
+        this.heartbeat_watchdog_thread = new Thread()
+        {
+            @Override
+            public void run()
+            {
+                this_ptr.heartbeat_watchdog();
+            }
+        };
+        this.heartbeat_watchdog_thread.setDaemon(true);
+        
+        
+    }
+    
+    /**
+       Override this method to send cohort message to other side.
+     */
+    protected abstract void send_message(CohortMessage msg) throws IOException;
+
+
+    /**
+       Send a single heartbeat message to the other end of the
+       connection.
+     */
+    protected void send_heartbeat() throws IOException
+    {
+        long view_number = view_number_supplier.last_view_number();
+        Heartbeat.Builder heartbeat = Heartbeat.newBuilder();
+        heartbeat.setViewNumber(view_number);
+
+        CohortMessage.Builder msg = CohortMessage.newBuilder();
+        msg.setHeartbeat(heartbeat);
+        send_message(msg.build());
+    }
+
+    /**
+       Should be run as separate thread that periodically gets
+       interrupted.  If it doesn't get interrupted after a period of
+       time, then 
+     */
+    protected void heartbeat_watchdog()
+    {
+        while (true)
+        {
+            try
+            {
+                Thread.sleep(heartbeat_timeout_period_ms);
+            }
+            catch(InterruptedException interrupted_exception)
+            {
+                // This thread gets interrupted whenever we receive a
+                // heartbeat message from other side.  In that case,
+                // do nothing more and just restart watchdog timer.
+                continue;
+            }
+
+            // Did not get a heartbeat message for given period of
+            // time: if we were already in state connection down, then
+            // continue in that state.  Otherwise, execute call that
+            // connection went down.
+            state_lock.lock();
+
+            if (state == CohortConnectionState.CONNECTION_UP)
+            {
+                // transition into connection down state.
+                state = CohortConnectionState.CONNECTION_DOWN;
+                notify_transition_down();
+            }
+            state_lock.unlock();
+        }
+    }
+
+    /**
+       Called while holding state lock.
+
+       Notifies all listeners that we've transitioned into down state.
+     */
+    protected void notify_transition_down()
+    {
+        connection_listener_lock.lock();        
+        try
+        {
+            for (ICohortConnectionListener connection_listener :
+                     connection_listener_set)
+            {
+                connection_listener.handle_connection_timeout();
+            }
+        }
+        finally
+        {
+            connection_listener_lock.unlock();
+        }
+    }
+
+    
     
     /************************ ICohortConnection overrides *****************/
+    @Override
     public abstract void start_service();
-    public abstract void send_heartbeat(long view_number) throws IOException;
     
     /**
        Listen for the connection's timing out.
