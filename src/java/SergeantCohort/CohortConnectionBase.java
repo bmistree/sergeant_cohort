@@ -87,7 +87,28 @@ public abstract class CohortConnectionBase implements ICohortConnection
      */
     protected abstract void send_message(CohortMessage msg) throws IOException;
 
+    /**
+       Should get called whenever we receive a heartbeat message from
+       other side.
+     */
+    protected void handle_heartbeat_message(Heartbeat msg)
+    {
+        heartbeat_watchdog_thread.interrupt();
+        state_lock.lock();
 
+        if (state == CohortConnectionState.CONNECTION_DOWN)
+        {
+            state = CohortConnectionState.CONNECTION_UP;
+            notify_connection_transition(false);
+        }
+        state_lock.unlock();
+    }
+    
+    protected void start_heartbeat_services()
+    {
+        heartbeat_watchdog_thread.start();
+    }
+    
     /**
        Send a single heartbeat message to the other end of the
        connection.
@@ -134,7 +155,7 @@ public abstract class CohortConnectionBase implements ICohortConnection
             {
                 // transition into connection down state.
                 state = CohortConnectionState.CONNECTION_DOWN;
-                notify_transition_down();
+                notify_connection_transition(true);
             }
             state_lock.unlock();
         }
@@ -143,9 +164,10 @@ public abstract class CohortConnectionBase implements ICohortConnection
     /**
        Called while holding state lock.
 
-       Notifies all listeners that we've transitioned into down state.
+       Notifies all listeners that we've transitioned into down state
+       or up state.
      */
-    protected void notify_transition_down()
+    protected void notify_connection_transition(boolean transitioned_down)
     {
         connection_listener_lock.lock();        
         try
@@ -153,7 +175,10 @@ public abstract class CohortConnectionBase implements ICohortConnection
             for (ICohortConnectionListener connection_listener :
                      connection_listener_set)
             {
-                connection_listener.handle_connection_timeout();
+                if (transitioned_down)
+                    connection_listener.handle_connection_timeout();
+                else
+                    connection_listener.handle_connection_up();
             }
         }
         finally
