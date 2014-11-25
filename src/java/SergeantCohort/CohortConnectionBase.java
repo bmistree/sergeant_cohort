@@ -191,18 +191,26 @@ public abstract class CohortConnectionBase implements ICohortConnection
             // time: if we were already in state connection down, then
             // continue in that state.  Otherwise, execute call that
             // connection went down.
-            state_lock.lock();
-
-            if (state == CohortConnectionState.CONNECTION_UP)
-            {
-                // transition into connection down state.
-                state = CohortConnectionState.CONNECTION_DOWN;
-                notify_connection_transition(true);
-            }
-            state_lock.unlock();
+            connection_down();
         }
     }
 
+    /**
+       Transition into down state, if had not already been in down
+       state.
+     */
+    protected void connection_down()
+    {
+        state_lock.lock();
+        if (state == CohortConnectionState.CONNECTION_UP)
+        {
+            // transition into connection down state.
+            state = CohortConnectionState.CONNECTION_DOWN;
+            notify_connection_transition(true);
+        }
+        state_lock.unlock();
+    }
+    
     /**
        Called while holding state lock.
 
