@@ -25,22 +25,27 @@ public class TCPCohortConnection extends CohortConnectionBase
     /**
        @param cohort_message_to_send --- The message to send to other
        side.
+       
+       @returns true if the message has been queued to be sent and
+       will definitely be sent as soon as can make connection.  false
+       if application itself should handle retrying.
      */
     @Override
-    protected void send_message(CohortMessage cohort_message_to_send)
-        throws IOException
+    protected boolean send_message(CohortMessage cohort_message_to_send)
     {
         // FIXME: Must fill in
         Util.force_assert(
             "FIXME: Must fill in send_message of TCPCohortConnection.");
+        return false;
     }
-
     
     /************************ ICohortConnection overrides ***********/
     @Override
     public void start_service()
     {
-        // FIXME: Must fill in
+        start_heartbeat_services();
+        
+        // FIXME: Must actually generate connection
         Util.force_assert(
             "FIXME: Must fill in start_service of TCPCohortConnection.");
     }

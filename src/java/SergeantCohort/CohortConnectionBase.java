@@ -35,7 +35,11 @@ public abstract class CohortConnectionBase implements ICohortConnection
        started when start method is called.
      */
     protected final Thread heartbeat_watchdog_thread;
-
+    /**
+       Periodically sends heartbeat to endpoint on other side of this
+       connection.
+     */
+    protected final Thread heartbeat_sending_thread;
 
     /**
        If we do not receive a heartbeat message in this period of ms,
@@ -78,15 +82,31 @@ public abstract class CohortConnectionBase implements ICohortConnection
             }
         };
         this.heartbeat_watchdog_thread.setDaemon(true);
+
+        // Initializes heartbeat sending thread, but does not start
+        // it.
+        this.heartbeat_sending_thread = new Thread()
+        {
+            @Override
+            public void run()
+            {
+                this_ptr.heartbeat_sender();
+            }
+        };
+        this.heartbeat_sending_thread.setDaemon(true);
     }
 
     
     /**
        Override this method to send cohort message to other side.
+
+       @returns true if the message has been queued to be sent and
+       will definitely be sent as soon as can make connection.  false
+       if application itself should handle retrying.
      */
-    protected abstract void send_message(CohortMessage msg) throws IOException;
-
-
+    protected abstract boolean send_message(CohortMessage msg);
+    
+    
     /**
        Message parser for received messages.
      */
@@ -145,17 +165,23 @@ public abstract class CohortConnectionBase implements ICohortConnection
         }
         state_lock.unlock();
     }
-    
+
+    /**
+       Start threads that periodically send heartbeat to opposite side
+       and expires connection if doesn't receive a heartbeat after a
+       period has expired.
+    */
     protected void start_heartbeat_services()
     {
         heartbeat_watchdog_thread.start();
+        heartbeat_sending_thread.start();
     }
     
     /**
        Send a single heartbeat message to the other end of the
        connection.
      */
-    protected void send_heartbeat() throws IOException
+    protected boolean send_heartbeat()
     {
         long view_number = view_number_supplier.last_view_number();
         Heartbeat.Builder heartbeat = Heartbeat.newBuilder();
@@ -163,7 +189,7 @@ public abstract class CohortConnectionBase implements ICohortConnection
 
         CohortMessage.Builder msg = CohortMessage.newBuilder();
         msg.setHeartbeat(heartbeat);
-        send_message(msg.build());
+        return send_message(msg.build());
     }
 
     /**
@@ -194,7 +220,32 @@ public abstract class CohortConnectionBase implements ICohortConnection
             connection_down();
         }
     }
-
+    
+    /**
+       Separate daemon thread that periodically sends heartbeats to
+       other side.
+     */
+    protected void heartbeat_sender()
+    {
+        while (true)
+        {
+            send_heartbeat();
+            try
+            {
+                Thread.sleep(heartbeat_send_period_ms);
+            }
+            catch (InterruptedException ex)
+            {
+                //// DEBUG
+                ex.printStackTrace();
+                Util.force_assert(
+                    "Got an unexpected interrupted exception while " +
+                    "sending heartbeats.");
+                //// END DEBUG
+            }
+        }
+    }
+    
     /**
        Transition into down state, if had not already been in down
        state.
