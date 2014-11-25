@@ -78,15 +78,57 @@ public abstract class CohortConnectionBase implements ICohortConnection
             }
         };
         this.heartbeat_watchdog_thread.setDaemon(true);
-        
-        
     }
+
     
     /**
        Override this method to send cohort message to other side.
      */
     protected abstract void send_message(CohortMessage msg) throws IOException;
 
+
+    /**
+       Message parser for received messages.
+     */
+    protected void handle_message(CohortMessage msg)
+    {
+        if (msg.hasHeartbeat())
+            handle_heartbeat_message(msg.getHeartbeat());
+        else
+        {
+            message_listener_lock.lock();
+            for (ICohortMessageListener msg_listener : message_listener_set)
+            {
+                if (msg.hasLeaderCommand())
+                {
+                    msg_listener.leader_command(msg.getLeaderCommand());
+                }
+                else if (msg.hasFollowerCommandAck())
+                {
+                    msg_listener.follower_command_ack(
+                        msg.getFollowerCommandAck());
+                }
+                else if (msg.hasElectionProposal())
+                {
+                    msg_listener.election_proposal(msg.getElectionProposal());
+                }
+                else if (msg.hasElectionProposalResponse())
+                {
+                    msg_listener.election_proposal_response(
+                        msg.getElectionProposalResponse());
+                }
+                //// DEBUG
+                else
+                {
+                    Util.force_assert(
+                        "Unknown message type in connection base.");
+                }
+                //// END DEBUG
+            }
+            message_listener_lock.unlock();
+        }
+    }
+    
     /**
        Should get called whenever we receive a heartbeat message from
        other side.
