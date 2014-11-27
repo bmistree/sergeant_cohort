@@ -4,7 +4,7 @@ import java.io.IOException;
 
 import ProtocolLibs.CohortMessageProto.CohortMessage;
 
-public class TCPCohortConnection extends CohortConnectionBase
+public class TCPCohortConnection extends CohortMessageSendingBase
 {
     /**
        Information for other side to connect to.
