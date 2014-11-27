@@ -53,6 +53,28 @@ public abstract class CohortMessageSendingBase
      */
     protected void handle_message(CohortMessage msg)
     {
+        // FIXME: ensure that only process messages in order of
+        // sequence numbers
+
+        msg_queue_lock.lock();
+        // Can remove all messages that we have sequence numbers for.
+        long last_acked_sequence_number = msg.getAckNumber();
+        while (! unacked_sent_messages.isEmpty())
+        {
+            CohortMessage.Builder oldest_unacked =
+                unacked_sent_messages.get(0);
+
+            if (oldest_unacked.getSequenceNumber() >
+                last_acked_sequence_number)
+            {
+                break;
+            }
+            // remove front element
+            unacked_sent_messages.remove(0);
+        }
+        msg_queue_lock.unlock();
+        
+        // handle heartbeat messages immediately.
         if (msg.hasHeartbeat())
             handle_heartbeat_message(msg.getHeartbeat());
         else
@@ -129,4 +151,3 @@ public abstract class CohortMessageSendingBase
         }
     }
 }
-                                               
