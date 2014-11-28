@@ -1,5 +1,8 @@
 package SergeantCohort;
 
+import java.util.Map;
+import java.util.HashMap;
+
 import java.util.List;
 import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
@@ -16,12 +19,23 @@ public abstract class CohortMessageSendingBase
        The last sequence number we sent to the other side.
      */
     protected long last_sequence_number_sent = 0;
-    protected long last_sequence_number_received = 0;
     protected final List<CohortMessage.Builder> unacked_sent_messages =
         new ArrayList<CohortMessage.Builder>();
-    protected final ReentrantLock msg_queue_lock = new ReentrantLock();
+    protected final ReentrantLock sent_messages_queue_lock = new ReentrantLock();
+
+    /**
+       All received messages get inserted into this map.  Key is its
+       sequence number, value is the actual message.  Allows us to
+       handle out-of-orderness.
+    */
+    private final Map<Long,CohortMessage> received_message_map =
+        new HashMap<Long,CohortMessage>();
+    protected long last_sequence_number_received = 0;
+    protected final ReentrantLock received_message_queue_lock =
+        new ReentrantLock();
 
 
+    
     public CohortMessageSendingBase(
         int heartbeat_timeout_period_ms,int heartbeat_send_period_ms,
         ILastViewNumberSupplier view_number_supplier)
@@ -39,12 +53,12 @@ public abstract class CohortMessageSendingBase
     {
         try
         {
-            msg_queue_lock.lock();
+            received_message_queue_lock.lock();
             return last_sequence_number_received;
         }
         finally
         {
-            msg_queue_lock.unlock();
+            received_message_queue_lock.unlock();
         }
     }
 
@@ -53,10 +67,8 @@ public abstract class CohortMessageSendingBase
      */
     protected void handle_message(CohortMessage msg)
     {
-        // FIXME: ensure that only process messages in order of
-        // sequence numbers
-
-        msg_queue_lock.lock();
+        //// FIRST: process acks associated with received message.
+        sent_messages_queue_lock.lock();
         // Can remove all messages that we have sequence numbers for.
         long last_acked_sequence_number = msg.getAckNumber();
         while (! unacked_sent_messages.isEmpty())
@@ -72,8 +84,37 @@ public abstract class CohortMessageSendingBase
             // remove front element
             unacked_sent_messages.remove(0);
         }
-        msg_queue_lock.unlock();
+        sent_messages_queue_lock.unlock();
+
         
+        //// SECOND: actually process received messages (with some
+        //// logic to ensure ordering).
+
+        // insert received message into map
+        received_message_queue_lock.lock();
+        received_message_map.put(msg.getSequenceNumber(),msg);
+
+        // break out of for loop when no longer have ordered map
+        // indices.
+        for (long map_index = last_sequence_number_received + 1;
+             ; ++ map_index)
+        {
+            CohortMessage msg_to_process =
+                received_message_map.remove(map_index);
+            if (msg_to_process == null)
+                break;
+
+            process_message(msg_to_process);
+            last_sequence_number_received++;
+        }
+        received_message_queue_lock.unlock();
+    }
+
+    /**
+       Actually process the message, notifying subscribed handlers.
+     */
+    private void process_message(CohortMessage msg)
+    {
         // handle heartbeat messages immediately.
         if (msg.hasHeartbeat())
             handle_heartbeat_message(msg.getHeartbeat());
@@ -130,7 +171,7 @@ public abstract class CohortMessageSendingBase
     @Override
     protected boolean send_message (CohortMessage.Builder msg)
     {
-        msg_queue_lock.lock();
+        sent_messages_queue_lock.lock();
         try
         {
             if (unacked_sent_messages.size() >=
@@ -147,7 +188,7 @@ public abstract class CohortMessageSendingBase
         }
         finally
         {
-            msg_queue_lock.unlock();
+            sent_messages_queue_lock.unlock();
         }
     }
 }
