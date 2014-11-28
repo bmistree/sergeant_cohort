@@ -92,22 +92,31 @@ public abstract class CohortMessageSendingBase
 
         // insert received message into map
         received_message_queue_lock.lock();
-        received_message_map.put(msg.getSequenceNumber(),msg);
-
-        // break out of for loop when no longer have ordered map
-        // indices.
-        for (long map_index = last_sequence_number_received + 1;
-             ; ++ map_index)
+        try
         {
-            CohortMessage msg_to_process =
-                received_message_map.remove(map_index);
-            if (msg_to_process == null)
-                break;
+            long msg_seq_num = msg.getSequenceNumber();
+            if (msg_seq_num <= last_sequence_number_received)
+                return;
 
-            process_message(msg_to_process);
-            last_sequence_number_received++;
+            received_message_map.put(msg.getSequenceNumber(),msg);
+            // break out of for loop when no longer have ordered map
+            // indices.
+            for (long map_index = last_sequence_number_received + 1;
+                 ; ++ map_index)
+            {
+                CohortMessage msg_to_process =
+                    received_message_map.remove(map_index);
+                if (msg_to_process == null)
+                    break;
+
+                process_message(msg_to_process);
+                last_sequence_number_received++;
+            }
         }
-        received_message_queue_lock.unlock();
+        finally
+        {
+            received_message_queue_lock.unlock();
+        }
     }
 
     /**
