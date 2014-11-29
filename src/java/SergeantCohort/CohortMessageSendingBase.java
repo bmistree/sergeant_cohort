@@ -11,7 +11,7 @@ import ProtocolLibs.CohortMessageProto.CohortMessage;
 
 
 public abstract class CohortMessageSendingBase
-    extends CohortHeartbeatBase
+    extends CohortHeartbeatBase implements ICohortConnectionListener
 {
     private final static int MAX_NUM_OUTSTANDING_UNACKED_MESSAGES = 100;
     
@@ -33,7 +33,6 @@ public abstract class CohortMessageSendingBase
     protected long last_sequence_number_received = 0;
     protected final ReentrantLock received_message_queue_lock =
         new ReentrantLock();
-
 
     
     public CohortMessageSendingBase(
@@ -194,6 +193,39 @@ public abstract class CohortMessageSendingBase
             unacked_sent_messages.add(msg);
             connection_specific_send_message(msg);
             return true;
+        }
+        finally
+        {
+            sent_messages_queue_lock.unlock();
+        }
+    }
+
+
+    /********************* ICohortConnectionListener overrides ***********/
+    @Override
+    public void handle_connection_timeout()
+    {
+        // do nothing: when connection times out, don't do anything
+        // differently.
+    }
+
+    
+    /**
+       Gets executed if connection goes from not set up to setup or we
+       receive a notification that the connection is back up after the
+       connection had timed out.  We should retransmit messages in our
+       outstanding message queue.
+     */
+    @Override
+    public void handle_connection_up()
+    {
+        sent_messages_queue_lock.lock();
+        try
+        {
+            // retransmit messages that may not have reached other
+            // side.
+            for (CohortMessage.Builder to_retransmit : unacked_sent_messages)
+                connection_specific_send_message(to_retransmit);
         }
         finally
         {
