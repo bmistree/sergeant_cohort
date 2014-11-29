@@ -1,27 +1,108 @@
 package SergeantCohort;
 
+import java.net.Socket;
 import java.io.IOException;
 
 import ProtocolLibs.CohortMessageProto.CohortMessage;
 
 public class TCPCohortConnection extends CohortMessageSendingBase
 {
+    protected final static int CONNECTION_RETRY_WAIT_PERIOD_MS = 500;
+    
     /**
        Information for other side to connect to.
      */
-    protected final CohortInfo cohort_info;
+    protected final CohortInfo remote_cohort_info;
 
+    protected Socket socket = null;
+    
     public TCPCohortConnection(
-        CohortInfo cohort_info,int heartbeat_timeout_period_ms,
+        CohortInfo remote_cohort_info,int heartbeat_timeout_period_ms,
         int heartbeat_send_period_ms,
         ILastViewNumberSupplier view_number_supplier)
     {
         super(
             heartbeat_timeout_period_ms,heartbeat_send_period_ms,
             view_number_supplier);
-        this.cohort_info = cohort_info;
+        this.remote_cohort_info = remote_cohort_info;
     }
 
+    protected void non_blocking_connect()
+    {
+        final TCPCohortConnection this_ptr = this;
+        Thread connect_thread = new Thread()
+        {
+            @Override
+            public void run()
+            {
+                this_ptr.connect_thread();
+            }
+        };
+        connect_thread.setDaemon(true);
+    }
+    
+    /**
+       Should only be called from non_blocking_connect as a separate
+       thread to try to connect to other endpoint.  Will keep retrying
+       to connect until the connection works.
+
+       Should only call if we are not already connected to other
+       endpoint.
+     */
+    private void connect_thread()
+    {
+        boolean retry = true;
+        while (retry)
+        {
+            state_lock.lock();
+            try
+            {
+                //// DEBUG
+                if (state != CohortConnectionState.CONNECTION_DOWN)
+                {
+                    Util.force_assert(
+                        "Should only try connecting when connection is down.");
+                }
+                if (socket != null)
+                {
+                    Util.force_assert("Expected socket to be null.");
+                }
+                //// END DEBUG
+            
+                try
+                {
+                    socket = new Socket(
+                        remote_cohort_info.ip_addr_or_hostname,
+                        remote_cohort_info.port);
+                }
+                catch (IOException ex)
+                {
+                    // wait a period and try to reconnect to other side
+                    socket = null;
+                    retry = true;
+                }
+            }
+            finally
+            {
+                state_lock.unlock();
+            }
+
+            // wait some time before trying to connect again.
+            if (retry)
+            {
+                try
+                {
+                    Thread.sleep(CONNECTION_RETRY_WAIT_PERIOD_MS);
+                }
+                catch(InterruptedException ex)
+                {
+                    Util.force_assert(
+                        "Unexpected interruption of a connection retry.");
+                }
+            }
+        }
+    }
+    
     /**
        @param msg --- The message to send to other side.
      */
