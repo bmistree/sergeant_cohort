@@ -60,8 +60,8 @@ public class TCPCohortConnection extends CohortMessageSendingBase
      */
     private void connect_thread()
     {
-        boolean retry = true;
-        while (retry)
+        // breaks out when actually connects.
+        while (true)
         {
             state_lock.lock();
             try
@@ -88,7 +88,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
                     // that our connection is up again.
                     state = CohortConnectionState.CONNECTION_UP;
                     notify_connection_transition(false);
-                    retry = false;
+                    return;
                 }
                 catch (IOException ex)
                 {
@@ -103,17 +103,14 @@ public class TCPCohortConnection extends CohortMessageSendingBase
             }
 
             // wait some time before trying to connect again.
-            if (retry)
+            try
             {
-                try
-                {
-                    Thread.sleep(CONNECTION_RETRY_WAIT_PERIOD_MS);
-                }
-                catch(InterruptedException ex)
-                {
-                    Util.force_assert(
-                        "Unexpected interruption of a connection retry.");
-                }
+                Thread.sleep(CONNECTION_RETRY_WAIT_PERIOD_MS);
+            }
+            catch(InterruptedException ex)
+            {
+                Util.force_assert(
+                    "Unexpected interruption of a connection retry.");
             }
         }
     }
