@@ -37,35 +37,44 @@ public class TCPCohortConnection extends CohortMessageSendingBase
         this.remote_cohort_info = remote_cohort_info;
     }
 
-    protected void non_blocking_connect()
+
+    /**
+       Decides whether this cohort should be trying to connect to
+       partner's ports or whether partner tries to connect to ours.
+       (Lower cohort ids listen, highers connect.)  Then, we spanw a
+       thread to either connect to other side or listen for
+       connections.
+     */
+    protected void non_blocking_listen_or_connect()
     {
+        final boolean should_listen =
+            local_cohort_info.cohort_id < remote_cohort_info.cohort_id;
+
         final TCPCohortConnection this_ptr = this;
-        Thread connect_thread = new Thread()
+        Thread listen_or_connect_thread = new Thread()
         {
             @Override
             public void run()
             {
-                this_ptr.connect_thread();
+                if (should_listen)
+                    this_ptr.listen_thread();
+                else
+                    this_ptr.connect_thread();
             }
         };
-        connect_thread.setDaemon(true);
+        listen_or_connect_thread.setDaemon(true);
+        listen_or_connect_thread.start();
     }
+    
+    /**       
+       Should only be called from non_blocking_listen_or_connect as a
+       separate thread to try to listen for other cohort's
+       connections.  Will keep retrying to accept connection until get
+       a connection.
 
-
-    protected void non_blocking_listen()
-    {
-        final TCPCohortConnection this_ptr = this;
-        Thread listen_thread = new Thread()
-        {
-            @Override
-            public void run()
-            {
-                this_ptr.listen_thread();
-            }
-        };
-        listen_thread.setDaemon(true);
-    }
-
+       Should only call if we are not already connected to other
+       endpoint.
+     */
     private void listen_thread()
     {
         //// DEBUG
@@ -126,9 +135,9 @@ public class TCPCohortConnection extends CohortMessageSendingBase
     }
     
     /**
-       Should only be called from non_blocking_connect as a separate
-       thread to try to connect to other endpoint.  Will keep retrying
-       to connect until the connection works.
+       Should only be called from non_blocking_listen_or_connect as a
+       separate thread to try to connect to other cohort host.  Will
+       keep retrying to connect until the connection works.
 
        Should only call if we are not already connected to other
        endpoint.
@@ -206,21 +215,17 @@ public class TCPCohortConnection extends CohortMessageSendingBase
     public void start_service()
     {
         start_heartbeat_services();
-        
-        // FIXME: Must actually generate connection
-        Util.force_assert(
-            "FIXME: Must fill in start_service of TCPCohortConnection.");
+        // Try to initially connect to other side, or to start the
+        // initial connection.
+        non_blocking_listen_or_connect();
     }
 
     /************************ ICohortConnectionListener overrides ****/
     @Override
     public void handle_connection_timeout()
     {
-        // FIXME: should eventually try to reconnect or listen for
-        // connections.  And when reconnect and receive connections,
-        // set to state up.
-        Util.force_assert(
-            "FIXME: Must fill in handle_connection_timeout " +
-            "in TCPCohortConnection");
+        // Try to reconnect directly or listen for connections.  And
+        // when connection comes up, set state to up.
+        non_blocking_listen_or_connect();
     }
 }
