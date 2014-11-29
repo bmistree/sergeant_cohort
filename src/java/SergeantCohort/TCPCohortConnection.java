@@ -8,6 +8,14 @@ import ProtocolLibs.CohortMessageProto.CohortMessage;
 public class TCPCohortConnection extends CohortMessageSendingBase
 {
     protected final static int CONNECTION_RETRY_WAIT_PERIOD_MS = 500;
+
+    /**
+       Information about local cohort.  This information contains a
+       port that we can bind to to listen for connections on.  We
+       listen for connections, instead of trying to make connections
+       if our cohort id is less than that of the remote cohort.
+     */
+    protected final CohortInfo local_cohort_info;
     
     /**
        Information for other side to connect to.
@@ -17,13 +25,14 @@ public class TCPCohortConnection extends CohortMessageSendingBase
     protected Socket socket = null;
     
     public TCPCohortConnection(
-        CohortInfo remote_cohort_info,int heartbeat_timeout_period_ms,
-        int heartbeat_send_period_ms,
+        CohortInfo local_cohort_info, CohortInfo remote_cohort_info,
+        int heartbeat_timeout_period_ms, int heartbeat_send_period_ms,
         ILastViewNumberSupplier view_number_supplier)
     {
         super(
             heartbeat_timeout_period_ms,heartbeat_send_period_ms,
             view_number_supplier);
+        this.local_cohort_info = local_cohort_info;
         this.remote_cohort_info = remote_cohort_info;
     }
 
