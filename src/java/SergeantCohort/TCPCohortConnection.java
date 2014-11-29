@@ -217,9 +217,27 @@ public class TCPCohortConnection extends CohortMessageSendingBase
     protected void connection_specific_send_message(
         CohortMessage.Builder msg)
     {
-        // FIXME: Must fill in
-        Util.force_assert(
-            "FIXME: Must fill in send_message of TCPCohortConnection.");
+        // note unlocking in two separate places because when get an
+        // IOException, must do work afterwards that doesn't include
+        // holding the socket lock.
+        socket_lock.lock();
+        try
+        {
+            // means can't send message.
+            if (socket == null)
+                return;
+
+            CohortMessage built_message = msg.build();
+            built_message.writeDelimitedTo(socket.getOutputStream());
+            socket_lock.unlock();
+        }
+        catch (IOException ex)
+        {
+            // socket failed: transition into down state
+            socket = null;
+            socket_lock.unlock();
+            connection_down();
+        }
     }
     
     /************************ ICohortConnection overrides ***********/
