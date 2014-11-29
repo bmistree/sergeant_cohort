@@ -2,6 +2,7 @@ package SergeantCohort;
 
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.locks.ReentrantLock;
 import java.io.IOException;
 
 import ProtocolLibs.CohortMessageProto.CohortMessage;
@@ -24,6 +25,8 @@ public class TCPCohortConnection extends CohortMessageSendingBase
     protected final CohortInfo remote_cohort_info;
 
     protected Socket socket = null;
+    protected final ReentrantLock socket_lock = new ReentrantLock();
+
     
     public TCPCohortConnection(
         CohortInfo local_cohort_info, CohortInfo remote_cohort_info,
@@ -79,6 +82,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
     {
         //// DEBUG
         state_lock.lock();
+        socket_lock.lock();
         if (state != CohortConnectionState.CONNECTION_DOWN)
         {
             Util.force_assert(
@@ -88,11 +92,13 @@ public class TCPCohortConnection extends CohortMessageSendingBase
         {
             Util.force_assert("Expected socket to be null.");
         }
+        socket_lock.unlock();
         state_lock.unlock();
         //// END DEBUG
 
         while (true)
         {
+            socket_lock.lock();
             ServerSocket server_socket = null;
             try
             {
@@ -119,6 +125,10 @@ public class TCPCohortConnection extends CohortMessageSendingBase
             catch (IOException ex)
             {
                 // EMPTY: just wait some time and retry.
+            }
+            finally
+            {
+                socket_lock.unlock();
             }
 
             // wait some time before trying to connect again.
@@ -148,6 +158,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
         while (true)
         {
             state_lock.lock();
+            socket_lock.lock();
             try
             {
                 //// DEBUG
@@ -182,6 +193,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
             }
             finally
             {
+                socket_lock.unlock();
                 state_lock.unlock();
             }
 
