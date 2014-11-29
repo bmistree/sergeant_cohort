@@ -203,11 +203,7 @@ public abstract class CohortMessageSendingBase
 
     /********************* ICohortConnectionListener overrides ***********/
     @Override
-    public void handle_connection_timeout()
-    {
-        // do nothing: when connection times out, don't do anything
-        // differently.
-    }
+    public abstract void handle_connection_timeout();
 
     
     /**

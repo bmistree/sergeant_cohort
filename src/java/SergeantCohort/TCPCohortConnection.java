@@ -44,4 +44,15 @@ public class TCPCohortConnection extends CohortMessageSendingBase
         Util.force_assert(
             "FIXME: Must fill in start_service of TCPCohortConnection.");
     }
+
+    /************************ ICohortConnectionListener overrides ****/
+    @Override
+    public void handle_connection_timeout()
+    {
+        // FIXME: should eventually try to reconnect.  And when
+        // reconnect, set to state up.
+        Util.force_assert(
+            "FIXME: Must fill in handle_connection_timeout " +
+            "in TCPCohortConnection");
+    }
 }
