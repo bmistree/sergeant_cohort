@@ -107,6 +107,7 @@ public abstract class CohortHeartbeatBase implements ICohortConnection
         heartbeat_watchdog_thread.interrupt();
         state_lock.lock();
 
+        // FIXME: should this condition ever happen???
         if (state == CohortConnectionState.CONNECTION_DOWN)
         {
             state = CohortConnectionState.CONNECTION_UP;

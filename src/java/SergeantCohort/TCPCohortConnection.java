@@ -83,6 +83,12 @@ public class TCPCohortConnection extends CohortMessageSendingBase
                     socket = new Socket(
                         remote_cohort_info.ip_addr_or_hostname,
                         remote_cohort_info.port);
+
+                    // update state variable and notify all listeners
+                    // that our connection is up again.
+                    state = CohortConnectionState.CONNECTION_UP;
+                    notify_connection_transition(false);
+                    retry = false;
                 }
                 catch (IOException ex)
                 {
