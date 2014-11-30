@@ -44,7 +44,16 @@ public class TCPCohortConnection extends CohortMessageSendingBase
         this.remote_cohort_info = remote_cohort_info;
     }
 
+    /**
+       @returns The id of the remote cohort.
+     */
+    @Override
+    public int remote_cohort_id()
+    {
+        return remote_cohort_info.cohort_id;
+    }
 
+    
     /**
        Decides whether this cohort should be trying to connect to
        partner's ports or whether partner tries to connect to ours.
@@ -255,8 +264,11 @@ public class TCPCohortConnection extends CohortMessageSendingBase
     }
 
     /************************ ICohortConnectionListener overrides ****/
+    /**
+       @param connection --- this.
+     */
     @Override
-    public void handle_connection_timeout()
+    public void handle_connection_timeout(ICohortConnection connection)
     {
         // Try to reconnect directly or listen for connections.  And
         // when connection comes up, set state to up.

@@ -135,6 +135,12 @@ public abstract class CohortHeartbeatBase implements ICohortConnection
      */
     protected abstract boolean send_message (CohortMessage.Builder msg);
 
+    /**
+       @returns The id of the remote cohort.
+     */
+    @Override
+    public abstract int remote_cohort_id();
+    
     
     /**
        Send a single heartbeat message to the other end of the
@@ -236,9 +242,9 @@ public abstract class CohortHeartbeatBase implements ICohortConnection
                      connection_listener_set)
             {
                 if (transitioned_down)
-                    connection_listener.handle_connection_timeout();
+                    connection_listener.handle_connection_timeout(this);
                 else
-                    connection_listener.handle_connection_up();
+                    connection_listener.handle_connection_up(this);
             }
         }
         finally

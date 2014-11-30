@@ -205,18 +205,25 @@ public abstract class CohortMessageSendingBase
 
 
     /********************* ICohortConnectionListener overrides ***********/
-    @Override
-    public abstract void handle_connection_timeout();
 
+    /**
+       @param timed_out_connection --- Should just be this.
+     */
+    @Override
+    public abstract void handle_connection_timeout(
+        ICohortConnection timed_out_connection);
     
     /**
        Gets executed if connection goes from not set up to setup or we
        receive a notification that the connection is back up after the
        connection had timed out.  We should retransmit messages in our
        outstanding message queue.
+
+       @param up_connection --- Should just be this.
      */
     @Override
-    public void handle_connection_up()
+    public void handle_connection_up(
+        ICohortConnection up_connection)
     {
         sent_messages_queue_lock.lock();
         try

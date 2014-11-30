@@ -84,13 +84,13 @@ public class CohortManager
 
     /***** ICohortConnectionListener overrides*/
     @Override
-    public void handle_connection_timeout()
+    public void handle_connection_timeout(ICohortConnection cohort_connection)
     {
         // FIXME: Fill in stub
         Util.force_assert("Must fill in handle_connection_timeout stub");
     }
     @Override
-    public void handle_connection_up()
+    public void handle_connection_up(ICohortConnection cohort_connection)
     {
         // FIXME: Fill in stub
         Util.force_assert("Must fill in handle_connection_up stub");
