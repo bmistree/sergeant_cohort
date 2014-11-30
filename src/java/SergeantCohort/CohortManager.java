@@ -2,6 +2,10 @@ package SergeantCohort;
 
 import java.util.Set;
 
+/**
+   Makes connections to many cohorts and then tries to elect a leader
+   amongst them.
+ */
 public class CohortManager implements ICohortManager
 {
     protected enum ManagerState
@@ -14,15 +18,30 @@ public class CohortManager implements ICohortManager
      */
     protected ManagerState state = ManagerState.ELECTION;
 
-    final Set<CohortInfo> partner_set;
-    final CohortInfo manager_info;
+    /**
+       Connection information that we should use to connect to remote
+       cohort nodes.
+     */
+    final Set<CohortInfo.CohortInfoPair> connection_info;
 
-    public CohortManager(
-        Set<CohortInfo> partner_set, CohortInfo manager_info)
+    /**
+       @param connection_info ---
+       {@link CohortManager#connection_info}
+     */
+    public CohortManager(Set<CohortInfo.CohortInfoPair> connection_info)
     {
-        this.partner_set = partner_set;
-        this.manager_info = manager_info;
+        this.connection_info = connection_info;
     }
+
+    /**
+       Actually start connections to other cohort nodes.
+     */
+    public void start_manager()
+    {
+        // FIXME: Fill in stub
+        Util.force_assert("Must fill in start_manager");
+    }
+    
 
     /*************** ICohortManager methods **********/
     @Override
@@ -31,5 +50,4 @@ public class CohortManager implements ICohortManager
         // FIXME: Fill in stub
         Util.force_assert("Must fill in submit_command method");
     }
-    
 }

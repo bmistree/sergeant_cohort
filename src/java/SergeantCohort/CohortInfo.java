@@ -13,4 +13,18 @@ public class CohortInfo
         this.port = port;
         this.cohort_id = cohort_id;
     }
+
+
+    public static class CohortInfoPair
+    {
+        public final CohortInfo remote_cohort_info;
+        public final CohortInfo local_cohort_info;
+        
+        public CohortInfoPair(
+            CohortInfo remote_cohort_info, CohortInfo local_cohort_info)
+        {
+            this.remote_cohort_info = remote_cohort_info;
+            this.local_cohort_info = local_cohort_info;
+        }
+    }
 }
