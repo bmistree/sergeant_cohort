@@ -2,6 +2,8 @@ package SergeantCohort;
 
 import java.util.Set;
 
+import SergeantCohort.CohortConnection.ICohortConnectionFactory;
+
 /**
    Makes connections to many cohorts and then tries to elect a leader
    amongst them.
@@ -22,15 +24,19 @@ public class CohortManager implements ICohortManager
        Connection information that we should use to connect to remote
        cohort nodes.
      */
-    final Set<CohortInfo.CohortInfoPair> connection_info;
-
+    final private Set<CohortInfo.CohortInfoPair> connection_info;
+    final private ICohortConnectionFactory cohort_connection_factory;
+    
     /**
        @param connection_info ---
        {@link CohortManager#connection_info}
      */
-    public CohortManager(Set<CohortInfo.CohortInfoPair> connection_info)
+    public CohortManager(
+        Set<CohortInfo.CohortInfoPair> connection_info,
+        ICohortConnectionFactory cohort_connection_factory)
     {
         this.connection_info = connection_info;
+        this.cohort_connection_factory = cohort_connection_factory;
     }
 
     /**

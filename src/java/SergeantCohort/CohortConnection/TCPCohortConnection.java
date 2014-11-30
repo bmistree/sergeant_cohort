@@ -262,4 +262,30 @@ public class TCPCohortConnection extends CohortMessageSendingBase
         // when connection comes up, set state to up.
         non_blocking_listen_or_connect();
     }
+
+    
+    public static class TCPCohortConnectionFactory
+        implements ICohortConnectionFactory
+    {
+        final private int heartbeat_timeout_period_ms;
+        final private int heartbeat_send_period_ms;
+        final private ILastViewNumberSupplier view_number_supplier;
+        
+        public TCPCohortConnectionFactory(
+            int heartbeat_timeout_period_ms, int heartbeat_send_period_ms,
+            ILastViewNumberSupplier view_number_supplier)
+        {
+            this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
+            this.heartbeat_send_period_ms = heartbeat_send_period_ms;
+            this.view_number_supplier = view_number_supplier;
+        }
+        
+        public ICohortConnection construct(
+            CohortInfo local_info, CohortInfo remote_info)
+        {
+            return new TCPCohortConnection(
+                local_info,remote_info, heartbeat_timeout_period_ms,
+                heartbeat_send_period_ms, view_number_supplier);
+        }
+    }
 }
