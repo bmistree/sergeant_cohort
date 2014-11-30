@@ -136,21 +136,22 @@ public abstract class CohortMessageSendingBase
             {
                 if (msg.hasLeaderCommand())
                 {
-                    msg_listener.leader_command(msg.getLeaderCommand());
+                    msg_listener.leader_command(this,msg.getLeaderCommand());
                 }
                 else if (msg.hasFollowerCommandAck())
                 {
                     msg_listener.follower_command_ack(
-                        msg.getFollowerCommandAck());
+                        this,msg.getFollowerCommandAck());
                 }
                 else if (msg.hasElectionProposal())
                 {
-                    msg_listener.election_proposal(msg.getElectionProposal());
+                    msg_listener.election_proposal(
+                        this,msg.getElectionProposal());
                 }
                 else if (msg.hasElectionProposalResponse())
                 {
                     msg_listener.election_proposal_response(
-                        msg.getElectionProposalResponse());
+                        this,msg.getElectionProposalResponse());
                 }
                 //// DEBUG
                 else
