@@ -5,12 +5,15 @@ import java.util.HashSet;
 
 import SergeantCohort.CohortConnection.ICohortConnectionFactory;
 import SergeantCohort.CohortConnection.ICohortConnection;
+import SergeantCohort.CohortConnection.ICohortConnectionListener;
+import SergeantCohort.CohortConnection.ICohortMessageListener;
 
 /**
    Makes connections to many cohorts and then tries to elect a leader
    amongst them.
  */
-public class CohortManager implements ICohortManager
+public class CohortManager
+    implements ICohortManager, ICohortConnectionListener
 {
     protected enum ManagerState
     {
@@ -22,6 +25,11 @@ public class CohortManager implements ICohortManager
      */
     protected ManagerState state = ManagerState.ELECTION;
 
+    /**
+       Start with no leader when in election state.
+     */
+    protected Integer current_leader_id = null;
+    
     /**
        Connection information that we should use to connect to remote
        cohort nodes.
@@ -46,6 +54,10 @@ public class CohortManager implements ICohortManager
                 cohort_connection_factory.construct(
                     pair.local_cohort_info,pair.remote_cohort_info);
             cohort_connections.add(connection);
+
+            // subscribe as connection and message listeners
+            connection.add_connection_listener(this);
+            //connection.add_cohort_message_listener(this);
         }
     }
 
@@ -54,8 +66,11 @@ public class CohortManager implements ICohortManager
      */
     public void start_manager()
     {
-        // FIXME: Fill in stub
-        Util.force_assert("Must fill in start_manager");
+        for (ICohortConnection connection : cohort_connections)
+            connection.start_service();
+
+        // FIXME: fill in stub.  Still need to send leader messages;
+        Util.force_assert("Must fill in start_manager method");
     }
     
 
@@ -65,5 +80,19 @@ public class CohortManager implements ICohortManager
     {
         // FIXME: Fill in stub
         Util.force_assert("Must fill in submit_command method");
+    }
+
+    /***** ICohortConnectionListener overrides*/
+    @Override
+    public void handle_connection_timeout()
+    {
+        // FIXME: Fill in stub
+        Util.force_assert("Must fill in handle_connection_timeout stub");
+    }
+    @Override
+    public void handle_connection_up()
+    {
+        // FIXME: Fill in stub
+        Util.force_assert("Must fill in handle_connection_up stub");
     }
 }
