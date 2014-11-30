@@ -1,4 +1,4 @@
-package SergeantCohort;
+package SergeantCohort.CohortConnection;
 
 import java.io.IOException;
 

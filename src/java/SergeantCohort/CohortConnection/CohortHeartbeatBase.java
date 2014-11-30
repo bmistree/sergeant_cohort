@@ -1,4 +1,4 @@
-package SergeantCohort;
+package SergeantCohort.CohortConnection;
 
 import java.util.Set;
 import java.util.HashSet;
@@ -9,6 +9,8 @@ import java.io.IOException;
 import ProtocolLibs.CohortMessageProto.CohortMessage;
 import ProtocolLibs.HeartbeatProto.Heartbeat;
 
+import SergeantCohort.Util;
+import SergeantCohort.ILastViewNumberSupplier;
 
 public abstract class CohortHeartbeatBase implements ICohortConnection
 {

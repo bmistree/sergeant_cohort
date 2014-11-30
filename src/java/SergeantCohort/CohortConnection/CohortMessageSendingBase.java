@@ -1,4 +1,4 @@
-package SergeantCohort;
+package SergeantCohort.CohortConnection;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -9,6 +9,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import ProtocolLibs.CohortMessageProto.CohortMessage;
 
+import SergeantCohort.Util;
+import SergeantCohort.ILastViewNumberSupplier;
+import SergeantCohort.CohortInfo;
 
 public abstract class CohortMessageSendingBase
     extends CohortHeartbeatBase implements ICohortConnectionListener

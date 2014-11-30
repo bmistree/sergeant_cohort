@@ -1,4 +1,4 @@
-package SergeantCohort;
+package SergeantCohort.CohortConnection;
 
 import ProtocolLibs.LeaderCommandProto.LeaderCommand;
 import ProtocolLibs.FollowerCommandAckProto.FollowerCommandAck;

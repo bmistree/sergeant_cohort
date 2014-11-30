@@ -1,4 +1,4 @@
-package SergeantCohort;
+package SergeantCohort.CohortConnection;
 
 import java.net.ServerSocket;
 import java.net.Socket;
@@ -6,6 +6,10 @@ import java.util.concurrent.locks.ReentrantLock;
 import java.io.IOException;
 
 import ProtocolLibs.CohortMessageProto.CohortMessage;
+
+import SergeantCohort.Util;
+import SergeantCohort.ILastViewNumberSupplier;
+import SergeantCohort.CohortInfo;
 
 public class TCPCohortConnection extends CohortMessageSendingBase
 {
