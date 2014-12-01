@@ -47,6 +47,12 @@ public class CohortManager
      */
     protected ElectionContext election_context;
 
+    /**
+       We only want to elect leaders who have the most up to date log.
+     */
+    protected long last_log_index = 0;
+    protected long last_log_term = 0;
+    
     
     /**
        Also protects current_leader_id, view_number, and
@@ -57,7 +63,7 @@ public class CohortManager
     /**
        Start with no leader when in election state.
      */
-    protected Integer current_leader_id = null;
+    protected Long current_leader_id = null;
     
     /**
        Connection information that we should use to connect to remote
@@ -69,7 +75,7 @@ public class CohortManager
     /**
        Id of local cohort.
      */
-    final public int local_cohort_id;
+    final public long local_cohort_id;
     
     /**
        @param connection_info --- Connection information that we
@@ -83,7 +89,7 @@ public class CohortManager
     public CohortManager(
         Set<CohortInfo.CohortInfoPair> connection_info,
         ICohortConnectionFactory cohort_connection_factory,
-        int local_cohort_id)
+        long local_cohort_id)
     {
         for (CohortInfo.CohortInfoPair pair : connection_info)
         {
@@ -137,8 +143,10 @@ public class CohortManager
      */
     private void elect_self_thread()
     {
+        ElectionProposal.Builder election_proposal =
+                ElectionProposal.newBuilder();
+        
         state_lock.lock();
-        long new_view_number = -1;
         try
         {
             // election has passed.
@@ -150,19 +158,18 @@ public class CohortManager
             if (election_context.voting_for_cohort_id != local_cohort_id)
                 return;
             
-            new_view_number = election_context.last_view_number + 1;
+            long new_view_number = election_context.last_view_number + 1;
+
+            // ask all cohorts to vote for me as new leader.
+            election_proposal.setNextProposedViewNumber(new_view_number);
+            election_proposal.setNodeId(local_cohort_id);
+            election_proposal.setLastLogIndex(last_log_index);
+            election_proposal.setLastLogTerm(last_log_term);            
         }
         finally
         {
             state_lock.unlock();
         }
-
-
-        // ask all cohorts to vote for me as new leader.
-        ElectionProposal.Builder election_proposal =
-            ElectionProposal.newBuilder();
-        election_proposal.setNextProposedViewNumber(new_view_number);
-        election_proposal.setNodeId(local_cohort_id);
 
         CohortMessage.Builder cohort_message =
             CohortMessage.newBuilder();
@@ -205,7 +212,7 @@ public class CohortManager
         
         try
         {
-            int remote_timed_out_id = cohort_connection.remote_cohort_id();
+            long remote_timed_out_id = cohort_connection.remote_cohort_id();
             if (state == ManagerState.FOLLOWER)
             {
                 // if leader times out, then try to elect self as new
@@ -252,13 +259,84 @@ public class CohortManager
         Util.force_assert("Must fill in follower_command_ack stub");
     }
 
+    /**
+       We received an election proposal request.
+
+       Semantics:
+          1) Return false if proposed term is less than current
+          2) Grant vote if:
+               a) Have not voted for anyone else this term
+               b) Log is at least as up to date as our log.
+     */
     @Override
     public void election_proposal(
         ICohortConnection cohort_connection,
         ElectionProposal election_proposal)
     {
-        // FIXME: Fill in stub
-        Util.force_assert("Must fill in election_proposal stub");
+        long proposed_view_number =
+            election_proposal.getNextProposedViewNumber();
+        boolean vote_granted = false;
+        long cohort_id = cohort_connection.remote_cohort_id();
+
+        
+        state_lock.lock();
+        try
+        {
+            if (proposed_view_number <= view_number)
+            {
+                // wrong view number: do not vote for this candidate
+                vote_granted = false;
+            }
+            else
+            {
+                if ((election_context != null) &&
+                    (election_context.voting_for_cohort_id != cohort_id))
+                {
+                    // already voted for another candidate: do not
+                    // vote for this candidate
+                    vote_granted = false;
+                }
+                else if ((election_proposal.getLastLogIndex() < last_log_index) ||
+                         (election_proposal.getLastLogTerm() < last_log_term))
+                {
+                    // candidate's log isn't as up to date as mine: do
+                    // not vote for this candidate.
+                    vote_granted = false;
+                }
+                else
+                {
+                    // vote for this candidate.
+                    vote_granted = true;
+                    view_number = proposed_view_number - 1;
+                    if (election_context == null)
+                    {
+                        // means that we had not previously been in an
+                        // electing state.  enter one.
+                        election_context =
+                            new ElectionContext(view_number,cohort_id);
+                    }
+                    state = ManagerState.ELECTION;
+
+                    // FIXME: may need to stop being leader/notify
+                    // others that I am no longer leader.
+                }
+            }
+        }
+        finally
+        {
+            state_lock.unlock();
+        }
+        
+        ElectionProposalResponse.Builder election_proposal_response =
+            ElectionProposalResponse.newBuilder();
+        election_proposal_response.setProposedViewNumber(proposed_view_number);
+        election_proposal_response.setVoteGranted(vote_granted);
+
+        
+        CohortMessage.Builder cohort_message =
+            CohortMessage.newBuilder();
+        cohort_message.setElectionProposalResponse(election_proposal_response);
+        cohort_connection.send_message(cohort_message);
     }
     
     @Override

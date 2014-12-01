@@ -25,7 +25,7 @@ public interface ICohortConnection
     /**
        @returns The id of the remote cohort.
      */
-    public int remote_cohort_id();
+    public long remote_cohort_id();
 
     /**
        @returns --- true if message has been enqueued for eventual
