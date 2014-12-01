@@ -181,7 +181,7 @@ public abstract class CohortMessageSendingBase
        delivery.  false otherwise.
      */
     @Override
-    protected boolean send_message (CohortMessage.Builder msg)
+    public boolean send_message (CohortMessage.Builder msg)
     {
         sent_messages_queue_lock.lock();
         try

@@ -133,7 +133,7 @@ public abstract class CohortHeartbeatBase implements ICohortConnection
        @returns --- true if message has been enqueued for eventual
        delivery.  false otherwise.
      */
-    protected abstract boolean send_message (CohortMessage.Builder msg);
+    public abstract boolean send_message (CohortMessage.Builder msg);
 
     /**
        @returns The id of the remote cohort.

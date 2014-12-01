@@ -2,6 +2,8 @@ package SergeantCohort.CohortConnection;
 
 import java.io.IOException;
 
+import ProtocolLibs.CohortMessageProto.CohortMessage;
+
 public interface ICohortConnection
 {
     /**
@@ -24,4 +26,10 @@ public interface ICohortConnection
        @returns The id of the remote cohort.
      */
     public int remote_cohort_id();
+
+    /**
+       @returns --- true if message has been enqueued for eventual
+       delivery.  false otherwise.
+     */
+    public boolean send_message (CohortMessage.Builder msg);
 }
