@@ -8,7 +8,6 @@ import java.util.HashSet;
  */
 public class ElectionContext
 {
-    public final long last_view_number;
     public final long voting_for_cohort_id;
 
     /**
@@ -17,9 +16,8 @@ public class ElectionContext
     public final Set<Long> votes_received_set = new HashSet<Long>();
     
     
-    public ElectionContext(long last_view_number,long voting_for_cohort_id)
+    public ElectionContext(long voting_for_cohort_id)
     {
-        this.last_view_number = last_view_number;
         this.voting_for_cohort_id = voting_for_cohort_id;
         // handles case where trying to elect self
         votes_received_set.add(voting_for_cohort_id);

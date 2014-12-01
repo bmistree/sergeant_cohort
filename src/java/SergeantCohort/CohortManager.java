@@ -1,5 +1,6 @@
 package SergeantCohort;
 
+import java.util.Random;
 import java.util.Set;
 import java.util.HashSet;
 import java.util.concurrent.locks.ReentrantLock;
@@ -23,6 +24,23 @@ public class CohortManager
     implements ICohortManager, ICohortConnectionListener,
                ICohortMessageListener
 {
+    /**
+       How long to wait before retrying reelecting self.
+     */
+    public final static long BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS = 100L;
+    
+    /**
+       If we transition into election state, by receiving a message
+       from another node, wait this long before trying to elect
+       ourself.  Handles case where cohort solicits votes (plunging
+       everyone into election), and then crashes before becoming
+       leader.
+     */
+    public final static long MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT = 300L;
+
+    
+    protected final static Random rand = new Random();
+    
     protected enum ManagerState
     {
         ELECTION, LEADER, FOLLOWER;
@@ -110,8 +128,8 @@ public class CohortManager
         
         
         this.local_cohort_id = local_cohort_id;
-        election_context = new ElectionContext(view_number,local_cohort_id);
-        start_elect_self_thread();
+        election_context = new ElectionContext(local_cohort_id);
+        start_elect_self_thread(0);
     }
 
     /**
@@ -129,7 +147,8 @@ public class CohortManager
     /**
        Generate a thread to start trying to change view number.
      */
-    protected void start_elect_self_thread()
+    protected void start_elect_self_thread(
+        final long ms_to_wait_before_electing_self)
     {
         final CohortManager this_ptr = this;
         
@@ -138,36 +157,62 @@ public class CohortManager
             @Override
             public void run()
             {
-                this_ptr.elect_self_thread();
+                try
+                {
+                    Thread.sleep(ms_to_wait_before_electing_self);
+                }
+                catch(InterruptedException ex)
+                {
+                    Util.force_assert(
+                        "Unexpected interruption during " +
+                        "start_elect_self_thread");
+                }
+                this_ptr.elect_self_thread(0);
             }
         };
+        t.setDaemon(true);
+        t.start();
     }
-    
+
     /**
        Sends messages to all cohorts to try to elect self as leader.
        Should only be called from start_elect_self_thread.
+
+       Automatically tries re-electing self in case we do not hear
+       from enough to form a quorom in a given period of time.  Note
+       that this handles the case where we've voted for someone else
+       but they went down.
+       
+       @param num_times_called --- If we do not receive a quorum after
+       some period of time, then we retry electing self.  We use
+       num_times_called to determine how long we should wait before
+       retrying electing self, using exponential backoff.  Each
+       num_times_called, we can wait up to 2x longer than previous
+       time.
      */
-    private void elect_self_thread()
+    private void elect_self_thread(int num_times_called)
     {
         ElectionProposal.Builder election_proposal =
-                ElectionProposal.newBuilder();
+            ElectionProposal.newBuilder();
         
         state_lock.lock();
         try
         {
-            // election has passed.
-            if (election_context.last_view_number < view_number)
+            // election has passed
+            if (state != ManagerState.ELECTION)
                 return;
 
-            // another node swooped in and already got us to vote for
-            // it.
-            if (election_context.voting_for_cohort_id != local_cohort_id)
-                return;
+            // create a new election context, requiring a new set of
+            // voter responses.
+            election_context = new ElectionContext(local_cohort_id);
             
-            long new_view_number = election_context.last_view_number + 1;
-
+            // increment ballot so that know will be sending out
+            // election requests for a new, unique ballot number.
+            view_number += 1;
+            long proposed_view_number = view_number + 1;
+            
             // ask all cohorts to vote for me as new leader.
-            election_proposal.setNextProposedViewNumber(new_view_number);
+            election_proposal.setNextProposedViewNumber(proposed_view_number);
             election_proposal.setNodeId(local_cohort_id);
             election_proposal.setLastLogIndex(last_log_index);
             election_proposal.setLastLogTerm(last_log_term);            
@@ -182,6 +227,27 @@ public class CohortManager
         cohort_message.setElectionProposal(election_proposal);
 
         send_message_to_all_connections(cohort_message);
+
+
+        // wait a random period of time.  If after this time, we have
+        // not transitioned out of election then try to elect self
+        // again.
+        long max_time_to_wait_ms =
+            (1L<< num_times_called)*BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS;
+        long ms_to_wait_before_retry =
+            (long)(rand.nextFloat() * max_time_to_wait_ms);
+        
+        try
+        {
+            Thread.sleep(ms_to_wait_before_retry);
+        }
+        catch(InterruptedException ex)
+        {
+            Util.force_assert("Error: unexpected exception");
+        }
+
+        // tail recursion: okay
+        elect_self_thread(num_times_called + 1);
     }
 
     /**
@@ -228,8 +294,8 @@ public class CohortManager
                     current_leader_id = null;
                     state = ManagerState.ELECTION;
                     election_context =
-                        new ElectionContext(view_number,local_cohort_id);
-                    start_elect_self_thread();
+                        new ElectionContext(local_cohort_id);
+                    start_elect_self_thread(0);
                 }
             }
         }
@@ -313,16 +379,31 @@ public class CohortManager
                 {
                     // vote for this candidate.
                     vote_granted = true;
-                    view_number = proposed_view_number - 1;
+                    // this way, if we need to retrigger voting while
+                    // we're in the election stage, we will start with
+                    // view numbers at least as large as the one
+                    // already proposed.
+                    view_number = proposed_view_number;
                     if (election_context == null)
                     {
                         // means that we had not previously been in an
                         // electing state.  enter one.
-                        election_context =
-                            new ElectionContext(view_number,cohort_id);
+                        election_context = new ElectionContext(cohort_id);
                     }
-                    state = ManagerState.ELECTION;
 
+                    if (state != ManagerState.ELECTION)
+                    {
+                        state = ManagerState.ELECTION;
+                        // calling this here handles the case that the
+                        // election sender fails: if we aren't in a
+                        // stable state after
+                        // MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT, then
+                        // we will try to elect ourself.
+                        start_elect_self_thread(
+                            MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT);
+                    }
+                    
+                    
                     // FIXME: may need to stop being leader/notify
                     // others that I am no longer leader.
                 }
@@ -371,8 +452,7 @@ public class CohortManager
             if (election_context == null)
                 return;
             
-            if ((election_context.last_view_number + 1) !=
-                proposed_view_number)
+            if ((view_number + 1) != proposed_view_number)
             {
                 // discard: vote for an old message
                 return;
