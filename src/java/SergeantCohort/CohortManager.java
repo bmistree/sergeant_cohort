@@ -76,6 +76,8 @@ public class CohortManager
        Id of local cohort.
      */
     final public long local_cohort_id;
+
+    final public int quorum_size;
     
     /**
        @param connection_info --- Connection information that we
@@ -102,6 +104,10 @@ public class CohortManager
             connection.add_connection_listener(this);
             connection.add_cohort_message_listener(this);
         }
+
+        // added one because connection info does not include me.
+        quorum_size = ((int)((connection_info.size() + 1)/2.)) + 1;
+        
         
         this.local_cohort_id = local_cohort_id;
         election_context = new ElectionContext(view_number,local_cohort_id);
@@ -338,13 +344,56 @@ public class CohortManager
         cohort_message.setElectionProposalResponse(election_proposal_response);
         cohort_connection.send_message(cohort_message);
     }
-    
+
+
+    /**
+       Receive an election proposal response.
+     */
     @Override
     public void election_proposal_response(
         ICohortConnection cohort_connection,
         ElectionProposalResponse election_proposal_resp)
     {
-        // FIXME: Fill in stub
-        Util.force_assert("Must fill in election_proposal_response stub");
+        boolean vote_granted =
+            election_proposal_resp.getVoteGranted();
+        // nothing to do.
+        if (! vote_granted)
+            return;
+        
+        long proposed_view_number =
+            election_proposal_resp.getProposedViewNumber();
+        long remote_cohort_id = cohort_connection.remote_cohort_id();
+        
+        state_lock.lock();
+        try
+        {
+            // discard: had already transitioned into new state
+            if (election_context == null)
+                return;
+            
+            if ((election_context.last_view_number + 1) !=
+                proposed_view_number)
+            {
+                // discard: vote for an old message
+                return;
+            }
+
+
+            election_context.votes_received_set.add(remote_cohort_id);
+
+            // Check to make self leader.
+            if (election_context.votes_received_set.size() >= quorum_size)
+            {
+                view_number = proposed_view_number;
+                election_context = null;
+                state = ManagerState.LEADER;
+
+                // FIXME: tell everyone else that I am now leader.
+            }
+        }
+        finally
+        {
+            state_lock.unlock();
+        }
     }
 }
