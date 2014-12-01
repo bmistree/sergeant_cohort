@@ -3,6 +3,11 @@ package SergeantCohort;
 import java.util.Set;
 import java.util.HashSet;
 
+import ProtocolLibs.LeaderCommandProto.LeaderCommand;
+import ProtocolLibs.FollowerCommandAckProto.FollowerCommandAck;
+import ProtocolLibs.ElectionProposalProto.ElectionProposal;
+import ProtocolLibs.ElectionProposalResponseProto.ElectionProposalResponse;
+
 import SergeantCohort.CohortConnection.ICohortConnectionFactory;
 import SergeantCohort.CohortConnection.ICohortConnection;
 import SergeantCohort.CohortConnection.ICohortConnectionListener;
@@ -13,7 +18,8 @@ import SergeantCohort.CohortConnection.ICohortMessageListener;
    amongst them.
  */
 public class CohortManager
-    implements ICohortManager, ICohortConnectionListener
+    implements ICohortManager, ICohortConnectionListener,
+               ICohortMessageListener
 {
     protected enum ManagerState
     {
@@ -57,7 +63,7 @@ public class CohortManager
 
             // subscribe as connection and message listeners
             connection.add_connection_listener(this);
-            //connection.add_cohort_message_listener(this);
+            connection.add_cohort_message_listener(this);
         }
     }
 
@@ -94,5 +100,42 @@ public class CohortManager
     {
         // FIXME: Fill in stub
         Util.force_assert("Must fill in handle_connection_up stub");
+    }
+
+
+    /***************** ICohortMessageListener overrides ********/
+    @Override
+    public void leader_command(
+        ICohortConnection cohort_connection,LeaderCommand leader_command)
+    {
+        // FIXME: Fill in stub
+        Util.force_assert("Must fill in leader_command stub");
+    }
+
+    @Override
+    public void follower_command_ack(
+        ICohortConnection cohort_connection,
+        FollowerCommandAck follower_command_ack)
+    {
+        // FIXME: Fill in stub
+        Util.force_assert("Must fill in follower_command_ack stub");
+    }
+
+    @Override
+    public void election_proposal(
+        ICohortConnection cohort_connection,
+        ElectionProposal election_proposal)
+    {
+        // FIXME: Fill in stub
+        Util.force_assert("Must fill in election_proposal stub");
+    }
+    
+    @Override
+    public void election_proposal_response(
+        ICohortConnection cohort_connection,
+        ElectionProposalResponse election_proposal_resp)
+    {
+        // FIXME: Fill in stub
+        Util.force_assert("Must fill in election_proposal_response stub");
     }
 }
