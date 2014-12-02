@@ -316,12 +316,34 @@ public class CohortManager
 
     /***************** ICohortMessageListener overrides ********/
 
+    /**
+       Node on opposite end of cohort_connection has become the leader
+       for given view number.
+
+       Do nothing if view_number in message is less than our current
+       view number (stale message).  Otherwise, elect opposite node
+       our new leader.
+     */
     @Override
     public void new_leader(
         ICohortConnection cohort_connection,NewLeader new_leader)
     {
-        // FIXME: Fill in stub
-        Util.force_assert("Must fill in new_leader stub");
+        state_lock.lock();
+        try
+        {
+            if (new_leader.getViewNumber() < view_number)
+                return;
+            
+            state = ManagerState.FOLLOWER;
+            current_leader_id = cohort_connection.remote_cohort_id();
+            view_number = new_leader.getViewNumber();
+            // FIXME: should we notify anyone that we'll receive
+            // messages again (or forward them on)???
+        }
+        finally
+        {
+            state_lock.unlock();
+        }
     }
 
     
@@ -404,6 +426,7 @@ public class CohortManager
 
                     if (state != ManagerState.ELECTION)
                     {
+                        current_leader_id = null;
                         state = ManagerState.ELECTION;
                         // calling this here handles the case that the
                         // election sender fails: if we aren't in a
