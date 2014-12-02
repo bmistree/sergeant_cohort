@@ -39,7 +39,6 @@ public class CohortManager
      */
     public final static long MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT = 300L;
 
-    
     protected final static Random rand = new Random();
     
     protected enum ManagerState
