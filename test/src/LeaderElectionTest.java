@@ -77,8 +77,6 @@ public class LeaderElectionTest
                 ++num_leaders;
         }
 
-        System.out.println("\nNum leaders: " + num_leaders);
-        
         if (num_leaders != 1)
             return false;
         

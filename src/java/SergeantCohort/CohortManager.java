@@ -529,6 +529,8 @@ public class CohortManager
                 // tell all other nodes that I am now leader
                 NewLeader.Builder new_leader = NewLeader.newBuilder();
                 new_leader.setViewNumber(view_number);
+
+                i_am_leader_message = CohortMessage.newBuilder();
                 i_am_leader_message.setNewLeader(new_leader);
             }
         }
