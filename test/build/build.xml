@@ -1,0 +1,52 @@
+<project name="SergeantCohortTests" default="jarify_all" basedir=".">
+  
+    <description>
+        Build files for SergeantCohort project.
+    </description>
+
+    <dirname
+        property="build_dir"
+        file="${ant.file.SergeantCohortTests}"
+        />
+    
+    <!-- global properties for this build file -->
+    <property name="classes_dir" location="${build_dir}/classes"/>
+    <property name="lib_src_dir" location="${build_dir}/../../src/java/"/>
+    <property name="test_src_dir" location="${build_dir}/../src/"/>
+    <property name="deps_dir" location="${build_dir}/../../deps/"/>
+    <property
+        name="protobuf_jar" location="${deps_dir}/protobuf-java-2.5.0.jar"/>
+
+    <property name="lib_src_dir" location="${build_dir}/../../src/java/"/>
+    
+    <!-- Build targets -->
+
+    
+    <!-- set up build directories for test -->
+    <target name="init" description="setup build directories">
+        <echo message="Setting up build directories for tests"/>
+        <mkdir dir="${classes_dir}"/>
+    </target>
+
+    <!-- compile directory -->    
+    <target
+        name="compile"
+        depends="init"
+        description="compile java src">
+      
+        <javac
+            srcdir="${test_src_dir}:${lib_src_dir}"
+            destdir="${classes_dir}"
+            classpath="${protobuf_jar}"
+            debug="true"
+            debuglevel="lines,vars,source"
+            includeantruntime="false" />
+    </target>
+
+    <!-- Delete the build directories -->
+    <target name="clean" description="get rid of missing directories">
+        <delete dir="${classes_dir}"/>
+    </target>
+
+    
+</project>
