@@ -48,7 +48,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
        @returns The id of the remote cohort.
      */
     @Override
-    public int remote_cohort_id()
+    public long remote_cohort_id()
     {
         return remote_cohort_info.cohort_id;
     }

@@ -10,6 +10,7 @@ import ProtocolLibs.LeaderCommandProto.LeaderCommand;
 import ProtocolLibs.FollowerCommandAckProto.FollowerCommandAck;
 import ProtocolLibs.ElectionProposalProto.ElectionProposal;
 import ProtocolLibs.ElectionProposalResponseProto.ElectionProposalResponse;
+import ProtocolLibs.NewLeaderProto.NewLeader;
 
 import SergeantCohort.CohortConnection.ICohortConnectionFactory;
 import SergeantCohort.CohortConnection.ICohortConnection;
@@ -314,6 +315,16 @@ public class CohortManager
 
 
     /***************** ICohortMessageListener overrides ********/
+
+    @Override
+    public void new_leader(
+        ICohortConnection cohort_connection,NewLeader new_leader)
+    {
+        // FIXME: Fill in stub
+        Util.force_assert("Must fill in new_leader stub");
+    }
+
+    
     @Override
     public void leader_command(
         ICohortConnection cohort_connection,LeaderCommand leader_command)

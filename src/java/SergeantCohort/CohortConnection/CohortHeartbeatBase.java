@@ -139,7 +139,7 @@ public abstract class CohortHeartbeatBase implements ICohortConnection
        @returns The id of the remote cohort.
      */
     @Override
-    public abstract int remote_cohort_id();
+    public abstract long remote_cohort_id();
     
     
     /**
