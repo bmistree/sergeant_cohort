@@ -131,19 +131,17 @@ public class CohortManager
         
         this.local_cohort_id = local_cohort_id;
         election_context = new ElectionContext(local_cohort_id);
-        start_elect_self_thread(0);
     }
 
     /**
        Actually start connections to other cohort nodes.
+       Should be called before any other methods
      */
     public void start_manager()
     {
         for (ICohortConnection connection : cohort_connections)
             connection.start_service();
-
-        // FIXME: fill in stub.  Still need to send leader messages;
-        Util.force_assert("Must fill in start_manager method");
+        start_elect_self_thread(0);
     }
 
     /**
