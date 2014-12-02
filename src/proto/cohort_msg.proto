@@ -6,6 +6,7 @@ import "follower_command_ack.proto";
 import "election_proposal.proto";
 import "election_proposal_response.proto";
 import "heartbeat.proto";
+import "new_leader.proto";
 
 message CohortMessage
 {
@@ -19,4 +20,5 @@ message CohortMessage
     optional ElectionProposal election_proposal = 5;
     optional ElectionProposalResponse election_proposal_response = 6;
     optional Heartbeat heartbeat = 7;
+    optional NewLeader new_leader = 8;
 }
