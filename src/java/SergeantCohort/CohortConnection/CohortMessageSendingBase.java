@@ -198,6 +198,7 @@ public abstract class CohortMessageSendingBase
 
             ++last_sequence_number_sent;
             msg.setSequenceNumber(last_sequence_number_sent);
+            msg.setAckNumber(get_sequence_number_to_ack());
             unacked_sent_messages.add(msg);
             connection_specific_send_message(msg);
             return true;

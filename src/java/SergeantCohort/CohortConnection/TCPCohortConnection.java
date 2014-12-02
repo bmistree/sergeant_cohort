@@ -239,7 +239,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
             // means can't send message.
             if (socket == null)
                 return;
-
+            
             CohortMessage built_message = msg.build();
             built_message.writeDelimitedTo(socket.getOutputStream());
             socket_lock.unlock();
