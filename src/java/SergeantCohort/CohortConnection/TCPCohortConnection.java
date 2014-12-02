@@ -72,10 +72,14 @@ public class TCPCohortConnection extends CohortMessageSendingBase
             @Override
             public void run()
             {
+                Socket sock = null;
                 if (should_listen)
-                    this_ptr.listen_thread();
+                    sock = this_ptr.listen_thread();
                 else
-                    this_ptr.connect_thread();
+                    sock = this_ptr.connect_thread();
+
+                if (sock != null)
+                    read_from_socket(sock);
             }
         };
         listen_or_connect_thread.setDaemon(true);
@@ -91,7 +95,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
        Should only call if we are not already connected to other
        endpoint.
      */
-    private void listen_thread()
+    private Socket listen_thread()
     {
         //// DEBUG
         state_lock.lock();
@@ -128,7 +132,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
                     state = CohortConnectionState.CONNECTION_UP;
                     notify_connection_transition(false);
                     state_lock.unlock();
-                    return;
+                    return socket;
                 }
                 catch(IOException ex)
                 {
@@ -156,6 +160,32 @@ public class TCPCohortConnection extends CohortMessageSendingBase
             }
         }
     }
+
+    /**
+       Infinitely tries to read from socket (until socket fails).
+       Called after get a connection from listener thread or from
+       connector thread.
+     */
+    private void read_from_socket(Socket to_read_from)
+    {
+        while (true)
+        {
+            try
+            {
+                CohortMessage cohort_message =
+                    CohortMessage.parseDelimitedFrom(
+                        to_read_from.getInputStream());
+                handle_message(cohort_message);
+            }
+            catch (IOException ex)
+            {
+                // It's okay to break here: will try to reconnect
+                // separately.
+                break;
+            }
+        }
+    }
+    
     
     /**
        Should only be called from non_blocking_listen_or_connect as a
@@ -165,7 +195,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
        Should only call if we are not already connected to other
        endpoint.
      */
-    private void connect_thread()
+    private Socket connect_thread()
     {
         // breaks out when actually connects.
         while (true)
@@ -196,7 +226,7 @@ public class TCPCohortConnection extends CohortMessageSendingBase
                     // that our connection is up again.
                     state = CohortConnectionState.CONNECTION_UP;
                     notify_connection_transition(false);
-                    return;
+                    return socket;
                 }
                 catch (IOException ex)
                 {
