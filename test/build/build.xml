@@ -11,6 +11,7 @@
     
     <!-- global properties for this build file -->
     <property name="classes_dir" location="${build_dir}/classes"/>
+    <property name="jar_dir" location="${build_dir}/jars"/>
     <property name="lib_src_dir" location="${build_dir}/../../src/java/"/>
     <property name="test_src_dir" location="${build_dir}/../src/"/>
     <property name="deps_dir" location="${build_dir}/../../deps/"/>
@@ -26,6 +27,7 @@
     <target name="init" description="setup build directories">
         <echo message="Setting up build directories for tests"/>
         <mkdir dir="${classes_dir}"/>
+        <mkdir dir="${jar_dir}"/>
     </target>
 
     <!-- compile directory -->    
@@ -43,9 +45,36 @@
             includeantruntime="false" />
     </target>
 
+
+    <target
+        name="jar_leader_election"
+        depends="compile">
+        <antcall target="make_jar">
+          <param name="main_class" value="LeaderElectionTest"/>
+          <param name="dest_jar" value="leader_election.jar"/>
+        </antcall>
+    </target>
+
+    <!-- Make a jar -->
+    <target
+        name="make_jar"
+        description="Make a jar">
+      <jar destfile="${jar_dir}/${dest_jar}" filesetmanifest="mergewithoutmain">
+        <manifest>
+          <attribute name="Main-Class" value="test.${main_class}"/>
+          <attribute name="Class-Path" value="${classes_dir}:${protobuf_jar}"/>
+        </manifest>
+        <fileset dir="${classes_dir}"/>
+        <zipgroupfileset dir="${deps_dir}" includes="**/*.jar" />
+      </jar>
+    </target>
+    
+
+    
     <!-- Delete the build directories -->
     <target name="clean" description="get rid of missing directories">
         <delete dir="${classes_dir}"/>
+        <delete dir="${jar_dir}"/>
     </target>
 
     
