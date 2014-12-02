@@ -281,19 +281,17 @@ public class TCPCohortConnection extends CohortMessageSendingBase
     {
         final private int heartbeat_timeout_period_ms;
         final private int heartbeat_send_period_ms;
-        final private ILastViewNumberSupplier view_number_supplier;
         
         public TCPCohortConnectionFactory(
-            int heartbeat_timeout_period_ms, int heartbeat_send_period_ms,
-            ILastViewNumberSupplier view_number_supplier)
+            int heartbeat_timeout_period_ms, int heartbeat_send_period_ms)
         {
             this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
             this.heartbeat_send_period_ms = heartbeat_send_period_ms;
-            this.view_number_supplier = view_number_supplier;
         }
         
         public ICohortConnection construct(
-            CohortInfo local_info, CohortInfo remote_info)
+            CohortInfo local_info, CohortInfo remote_info,
+            ILastViewNumberSupplier view_number_supplier)
         {
             return new TCPCohortConnection(
                 local_info,remote_info, heartbeat_timeout_period_ms,

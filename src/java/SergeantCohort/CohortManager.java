@@ -23,7 +23,7 @@ import SergeantCohort.CohortConnection.ICohortMessageListener;
  */
 public class CohortManager
     implements ICohortManager, ICohortConnectionListener,
-               ICohortMessageListener
+               ICohortMessageListener, ILastViewNumberSupplier
 {
     /**
        How long to wait before retrying reelecting self.
@@ -116,7 +116,8 @@ public class CohortManager
         {
             ICohortConnection connection =
                 cohort_connection_factory.construct(
-                    pair.local_cohort_info,pair.remote_cohort_info);
+                    pair.local_cohort_info,pair.remote_cohort_info,
+                    this);
             cohort_connections.add(connection);
 
             // subscribe as connection and message listeners
@@ -523,5 +524,13 @@ public class CohortManager
         // that I am now the leader.
         if (i_am_leader_message != null)
             send_message_to_all_connections(i_am_leader_message);
+    }
+
+
+    /************** ILastViewNumberSupplier Overrides *******/
+    @Override
+    public long last_view_number()
+    {
+        return view_number;
     }
 }
