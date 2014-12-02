@@ -61,8 +61,10 @@ public class CohortManager
        view number.
      */
     protected long view_number = 0;
+    
     /**
-       Set to null after election has completed.
+       Set to null after election has completed.  May be null when
+       election hasn't completed.
      */
     protected ElectionContext election_context;
 
@@ -130,7 +132,6 @@ public class CohortManager
         
         
         this.local_cohort_id = local_cohort_id;
-        election_context = new ElectionContext(local_cohort_id);
     }
 
     /**
@@ -213,7 +214,6 @@ public class CohortManager
     {
         ElectionProposal.Builder election_proposal =
             ElectionProposal.newBuilder();
-        
         state_lock.lock();
         try
         {
@@ -221,14 +221,15 @@ public class CohortManager
             if (state != ManagerState.ELECTION)
                 return;
 
-            // create a new election context, requiring a new set of
-            // voter responses.
-            election_context = new ElectionContext(local_cohort_id);
-            
             // increment ballot so that know will be sending out
             // election requests for a new, unique ballot number.
             view_number += 1;
             long proposed_view_number = view_number + 1;
+
+            // create a new election context, requiring a new set of
+            // voter responses.
+            election_context =
+                new ElectionContext(local_cohort_id,proposed_view_number);
             
             // ask all cohorts to vote for me as new leader.
             election_proposal.setNextProposedViewNumber(proposed_view_number);
@@ -244,7 +245,6 @@ public class CohortManager
         CohortMessage.Builder cohort_message =
             CohortMessage.newBuilder();
         cohort_message.setElectionProposal(election_proposal);
-
         send_message_to_all_connections(cohort_message);
 
 
@@ -312,8 +312,6 @@ public class CohortManager
                 {
                     current_leader_id = null;
                     state = ManagerState.ELECTION;
-                    election_context =
-                        new ElectionContext(local_cohort_id);
                     start_elect_self_thread(0);
                 }
             }
@@ -353,6 +351,7 @@ public class CohortManager
                 return;
             
             state = ManagerState.FOLLOWER;
+            election_context = null;
             current_leader_id = cohort_connection.remote_cohort_id();
             view_number = new_leader.getViewNumber();
             // FIXME: should we notify anyone that we'll receive
@@ -400,7 +399,6 @@ public class CohortManager
             election_proposal.getNextProposedViewNumber();
         boolean vote_granted = false;
         long cohort_id = cohort_connection.remote_cohort_id();
-
         
         state_lock.lock();
         try
@@ -413,10 +411,11 @@ public class CohortManager
             else
             {
                 if ((election_context != null) &&
-                    (election_context.voting_for_cohort_id != cohort_id))
+                    (election_context.voting_for_cohort_id != cohort_id) &&
+                    (proposed_view_number == election_context.election_view_number))
                 {
-                    // already voted for another candidate: do not
-                    // vote for this candidate
+                    // already voted during this term for another
+                    // candidate: do not vote for the sender of this message.
                     vote_granted = false;
                 }
                 else if ((election_proposal.getLastLogIndex() < last_log_index) ||
@@ -439,7 +438,8 @@ public class CohortManager
                     {
                         // means that we had not previously been in an
                         // electing state.  enter one.
-                        election_context = new ElectionContext(cohort_id);
+                        election_context =
+                            new ElectionContext(cohort_id,proposed_view_number);
                     }
 
                     if (state != ManagerState.ELECTION)
