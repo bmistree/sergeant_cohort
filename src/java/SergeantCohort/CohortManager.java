@@ -308,8 +308,8 @@ public class CohortManager
     @Override
     public void handle_connection_up(ICohortConnection cohort_connection)
     {
-        // FIXME: Fill in stub
-        Util.force_assert("Must fill in handle_connection_up stub");
+        // can ignore connection up messages: other node will contact
+        // us if wants to reelect itself.
     }
 
 
