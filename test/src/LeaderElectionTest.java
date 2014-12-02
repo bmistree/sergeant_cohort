@@ -69,6 +69,16 @@ public class LeaderElectionTest
             SergeantCohort.Util.force_assert("Some error.");
         }
 
+        // check that have one and only one leader
+        int num_leaders = 0;
+        for (CohortManager cohort_manager : cohort_managers)
+        {
+            if (cohort_manager.is_leader())
+                ++num_leaders;
+        }
+
+        if (num_leaders != 1)
+            return false;
         
         return true;
     }
