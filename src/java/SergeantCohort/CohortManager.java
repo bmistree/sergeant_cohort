@@ -145,6 +145,25 @@ public class CohortManager
     }
 
     /**
+       For debugging.
+       
+       @returns --- true if this cohort manager is leader; false
+       otherwise.
+     */
+    public boolean is_leader()
+    {
+        state_lock.lock();
+        try
+        {
+            return state == ManagerState.LEADER;
+        }
+        finally
+        {
+            state_lock.unlock();
+        }
+    }
+    
+    /**
        Generate a thread to start trying to change view number.
      */
     protected void start_elect_self_thread(
