@@ -134,14 +134,14 @@ public abstract class CohortMessageSendingBase
             message_listener_lock.lock();
             for (ICohortMessageListener msg_listener : message_listener_set)
             {
-                if (msg.hasLeaderCommand())
+                if (msg.hasAppendEntries())
                 {
-                    msg_listener.leader_command(this,msg.getLeaderCommand());
+                    msg_listener.append_entries(this,msg.getAppendEntries());
                 }
-                else if (msg.hasFollowerCommandAck())
+                else if (msg.hasAppendEntriesResponse())
                 {
-                    msg_listener.follower_command_ack(
-                        this,msg.getFollowerCommandAck());
+                    msg_listener.append_entries_response(
+                        this,msg.getAppendEntriesResponse());
                 }
                 else if (msg.hasElectionProposal())
                 {

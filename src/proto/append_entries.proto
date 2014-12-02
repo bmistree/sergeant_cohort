@@ -1,0 +1,24 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "AppendEntriesProto";
+
+/**
+   Leaders send arbitrary commands to all clients.  The clients
+   receive commands and ack them.
+ */
+
+message AppendEntries
+{
+    // allows us to associate an append entries request with its
+    // response.
+    required uint64 nonce = 1;
+    
+    required uint64 view_number = 2;
+    required uint64 leader_cohort_id = 3;
+    required uint64 prev_log_index = 4;
+    required uint64 prev_log_term = 5;
+    
+    // Each is likely a serialized protocol buffer for another message
+    // type.  Keeping this as an arbitrary blob allows reusing this
+    // leader-election code to send arbitrary messages.
+    repeated bytes entries = 6;
+}

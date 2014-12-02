@@ -1,8 +1,8 @@
 option java_package = "ProtocolLibs";
 option java_outer_classname = "CohortMessageProto";
 
-import "leader_command.proto";
-import "follower_command_ack.proto";
+import "append_entries.proto";
+import "append_entries_response.proto";
 import "election_proposal.proto";
 import "election_proposal_response.proto";
 import "heartbeat.proto";
@@ -15,8 +15,8 @@ message CohortMessage
     required uint64 sequence_number = 1;
     required uint64 ack_number = 2;
     
-    optional LeaderCommand leader_command = 3;
-    optional FollowerCommandAck follower_command_ack = 4;
+    optional AppendEntries append_entries = 3;
+    optional AppendEntriesResponse append_entries_response = 4;
     optional ElectionProposal election_proposal = 5;
     optional ElectionProposalResponse election_proposal_response = 6;
     optional Heartbeat heartbeat = 7;

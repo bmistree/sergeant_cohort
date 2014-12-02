@@ -1,0 +1,10 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "AppendEntriesResponseProto";
+
+message AppendEntriesResponse
+{
+    // To match the nonce sent in append entries
+    required uint64 nonce = 1;
+    required uint64 view_number = 2;
+    required bool success = 3;
+}

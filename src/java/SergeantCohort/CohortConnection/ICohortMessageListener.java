@@ -1,19 +1,19 @@
 package SergeantCohort.CohortConnection;
 
-import ProtocolLibs.LeaderCommandProto.LeaderCommand;
-import ProtocolLibs.FollowerCommandAckProto.FollowerCommandAck;
+import ProtocolLibs.AppendEntriesProto.AppendEntries;
+import ProtocolLibs.AppendEntriesResponseProto.AppendEntriesResponse;
 import ProtocolLibs.ElectionProposalProto.ElectionProposal;
 import ProtocolLibs.ElectionProposalResponseProto.ElectionProposalResponse;
 import ProtocolLibs.NewLeaderProto.NewLeader;
 
 public interface ICohortMessageListener
 {
-    public void leader_command(
-        ICohortConnection cohort_connection,LeaderCommand leader_command);
+    public void append_entries(
+        ICohortConnection cohort_connection,AppendEntries append_entries);
     
-    public void follower_command_ack(
+    public void append_entries_response(
         ICohortConnection cohort_connection,
-        FollowerCommandAck follower_command_ack);
+        AppendEntriesResponse append_entries_response);
     
     public void election_proposal(
         ICohortConnection cohort_connection,
