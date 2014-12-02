@@ -414,7 +414,6 @@ public class CohortManager
                             MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT);
                     }
                     
-                    
                     // FIXME: may need to stop being leader/notify
                     // others that I am no longer leader.
                 }
@@ -455,6 +454,13 @@ public class CohortManager
         long proposed_view_number =
             election_proposal_resp.getProposedViewNumber();
         long remote_cohort_id = cohort_connection.remote_cohort_id();
+
+        // if this node becomes a leader as a result of this message,
+        // make this non-null and after release state lock, send
+        // message out.  I believe it is important to send message
+        // outside of state lock because sending message may change
+        // connection state, which means that 
+        CohortMessage.Builder i_am_leader_message = null;
         
         state_lock.lock();
         try
@@ -479,12 +485,20 @@ public class CohortManager
                 election_context = null;
                 state = ManagerState.LEADER;
 
-                // FIXME: tell everyone else that I am now leader.
+                // tell all other nodes that I am now leader
+                NewLeader.Builder new_leader = NewLeader.newBuilder();
+                new_leader.setViewNumber(view_number);
+                i_am_leader_message.setNewLeader(new_leader);
             }
         }
         finally
         {
             state_lock.unlock();
         }
+
+        // if got elected leader this round, then tell all other nodes
+        // that I am now the leader.
+        if (i_am_leader_message != null)
+            send_message_to_all_connections(i_am_leader_message);
     }
 }
