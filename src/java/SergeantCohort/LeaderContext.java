@@ -23,6 +23,8 @@ public class LeaderContext
        known to be replicated on node.  Starts at 0.
      */
     final protected Map<Long,Long> match_index_map = new HashMap<Long,Long>();
+
+    final protected long leader_term;
     
     final protected Log log;
     
@@ -35,9 +37,10 @@ public class LeaderContext
         new HashMap<Long,AppendEntries>();
 
     public LeaderContext(
-        Set<ICohortConnection> cohort_connections, Log log)
+        Set<ICohortConnection> cohort_connections, Log log, long leader_term)
     {
         this.log = log;
+        this.leader_term = leader_term;
         long current_log_size = this.log.size();
 
         for (ICohortConnection connection : cohort_connections)
@@ -120,6 +123,11 @@ public class LeaderContext
 
             // update next index
             next_index_map.put(remote_cohort_id,new_match_index + 1);
+
+            // check whether we should externalize values and update
+            // commit index.
+            try_update_commit_index();
+            
             return null;
         }
 
@@ -130,5 +138,55 @@ public class LeaderContext
         
         return produce_leader_append(
             view_number, local_cohort_id,remote_cohort_id);
+    }
+
+    /**
+       Check if we have any new values to externalize and fire
+       listeners if we do.
+       
+       If there exists an N such that N > commitIndex, a majority of
+       matchIndex[i] ≥ N, and log[N].term == currentTerm: set
+       commitIndex = N
+     */
+    protected void try_update_commit_index()
+    {
+        while(true)
+        {
+            long next_commit_index_to_try = log.get_commit_index() + 1;
+            if (!can_update_commit_index(next_commit_index_to_try))
+                return;
+
+            log.set_commit_index(next_commit_index_to_try);
+        }
+    }
+
+    /**
+       Can update commit_index if a majority of match_indices are >=
+       index_to_check and log[index_to_check].term == current_term;
+     */
+    protected boolean can_update_commit_index(long index_to_check)
+    {
+        // First, count number of cohorts whose match indices are >=
+        // index_to_check.
+        long num_cohorts_greater_than_equal = 0;
+        for (Long key : match_index_map.keySet())
+        {
+            Long match_index = match_index_map.get(key);
+            if (match_index >= index_to_check)
+                ++num_cohorts_greater_than_equal;
+        }
+
+        int quorum_size = ((int)((match_index_map.size() + 1)/2.)) + 1;
+        if ((1+num_cohorts_greater_than_equal) < quorum_size)
+            return false;
+
+        Long term_at_index = log.get_term_at_index(index_to_check);
+        if (term_at_index == null)
+            return false;
+
+        if (! term_at_index.equals(leader_term))
+            return false;
+        
+        return true;
     }
 }

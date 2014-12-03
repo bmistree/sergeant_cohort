@@ -623,8 +623,7 @@ public class CohortManager
                         this);
                 heartbeat_sending_service.start();
                 leader_context =
-                    new LeaderContext(cohort_connections,log);
-                
+                    new LeaderContext(cohort_connections,log,view_number);
                 
                 // tell all other nodes that I am now leader
                 NewLeader.Builder new_leader = NewLeader.newBuilder();

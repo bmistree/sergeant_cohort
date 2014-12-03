@@ -43,6 +43,25 @@ public class Log
         log.add(new LogEntry(null,0));
     }
 
+    /**
+       Can only be called from leader context.  Guaranteed safe access
+       because call that makes it is eventually holding state_lock for
+       cohort.
+     */
+    public synchronized long get_commit_index()
+    {
+        return commit_index;
+    }
+    /**
+       Generally set while in leader mode.
+     */
+    public synchronized void set_commit_index(long new_index)
+    {
+        commit_index = new_index;
+        try_apply();
+    }
+    
+    
     public synchronized int size()
     {
         return log.size();
@@ -120,6 +139,12 @@ public class Log
         if (leader_commit_index > commit_index)
             commit_index = Math.min(leader_commit_index, log.size() -1);
 
+        try_apply();        
+        return true;
+    }
+
+    protected void try_apply()
+    {
         for (long i = last_applied; i <= commit_index; ++i)
         {
             for (IApplyEntryListener listener : apply_entry_listener_set)
@@ -128,8 +153,6 @@ public class Log
         
         if (commit_index > last_applied)
             last_applied = commit_index;
-        
-        return true;
     }
     
     /**
@@ -176,11 +199,23 @@ public class Log
         to_return.setLeaderCommitIndex(commit_index);
         return to_return;
     }
+
+    /**
+       @returns null if index does not exist in log.
+     */
+    public synchronized Long get_term_at_index(long index)
+    {
+        if (index >= log.size())
+            return null;
+
+        LogEntry entry = log.get((int)index);
+        return entry.term;
+    }
     
     protected class LogEntry
     {
         public final byte[] contents;
-        protected final long term;
+        public final long term;
 
         public LogEntry(byte[] contents, long term)
         {
