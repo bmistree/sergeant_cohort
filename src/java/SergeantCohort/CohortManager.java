@@ -92,7 +92,11 @@ public class CohortManager
        election hasn't completed.
      */
     protected ElectionContext election_context;
-
+    /**
+       Set to null after no longer leader.
+     */
+    protected LeaderContext leader_context = null;
+    
     /**
        We only want to elect leaders who have the most up to date log.
      */
@@ -344,7 +348,8 @@ public class CohortManager
             
             state = ManagerState.FOLLOWER;
             heartbeat_sending_service = null;
-
+            leader_context = null;
+            
             heartbeat_listening_service =
                 new HeartbeatListeningService(
                     heartbeat_timeout_period_ms,this,
@@ -503,7 +508,7 @@ public class CohortManager
                         current_leader_id = null;
                         state = ManagerState.ELECTION;
                         heartbeat_sending_service = null;
-                        
+                        leader_context = null;
                         // calling this here handles the case that the
                         // election sender fails: if we aren't in a
                         // stable state after
@@ -590,6 +595,8 @@ public class CohortManager
                         heartbeat_send_period_ms, cohort_connections,
                         this);
                 heartbeat_sending_service.start();
+                leader_context =
+                    new LeaderContext(cohort_connections,log.size());
                 
                 
                 // tell all other nodes that I am now leader
@@ -654,9 +661,9 @@ public class CohortManager
             // transition into election state 
             current_leader_id = null;
             state = ManagerState.ELECTION;
+            leader_context = null;
             heartbeat_sending_service = null;
             start_elect_self_thread(0);
-            
         }
         finally
         {
