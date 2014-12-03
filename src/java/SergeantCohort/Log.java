@@ -159,7 +159,7 @@ public class Log
                 listener.apply_entry(log.get((int)i).contents);
         }
         
-        if (commit_index > last_applied)
+        if (commit_index >= last_applied)
             last_applied = commit_index;
     }
     
