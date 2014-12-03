@@ -6,7 +6,7 @@ import java.util.HashSet;
 
 import SergeantCohort.CohortManager;
 import SergeantCohort.CohortInfo;
-import static SergeantCohort.CohortConnection.TCPCohortConnection.TCPCohortConnectionFactory;
+import SergeantCohort.CohortConnection.TCPCohortConnection;
 
 
 /**
@@ -33,10 +33,6 @@ public class LeaderElectionTest
      */
     public static boolean run()
     {
-        TCPCohortConnectionFactory tcp_cohort_connection_factory =
-            new TCPCohortConnectionFactory(
-                HEARTBEAT_TIMEOUT_PERIOD_MS,HEARTBEAT_SEND_PERIOD_MS);
-
         Map<Long,Set<CohortInfo.CohortInfoPair>> cohort_map =
             Util.get_connection_info(COHORT_SIZE);
 
@@ -48,8 +44,10 @@ public class LeaderElectionTest
                 cohort_map.get(cohort_id);
             CohortManager cohort_manager =
                 new CohortManager(
-                    connection_info,tcp_cohort_connection_factory,cohort_id);
-
+                    connection_info,TCPCohortConnection.CONNECTION_FACTORY,
+                    cohort_id,HEARTBEAT_TIMEOUT_PERIOD_MS,
+                    HEARTBEAT_SEND_PERIOD_MS);
+            
             cohort_managers.add(cohort_manager);
         }
         
