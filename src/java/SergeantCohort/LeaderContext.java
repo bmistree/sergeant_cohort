@@ -123,7 +123,7 @@ public class LeaderContext
 
             // update next index
             next_index_map.put(remote_cohort_id,new_match_index + 1);
-
+                        
             // check whether we should externalize values and update
             // commit index.
             try_update_commit_index();
@@ -133,8 +133,8 @@ public class LeaderContext
 
         // failed, decrement next index and try to retransmit
         long prev_next_index = next_index_map.get(remote_cohort_id);
-        long new_match_index = prev_next_index -1;
-        next_index_map.put(remote_cohort_id,new_match_index);
+        long new_next_index = prev_next_index -1;
+        next_index_map.put(remote_cohort_id,new_next_index);
         
         return produce_leader_append(
             view_number, local_cohort_id,remote_cohort_id);
