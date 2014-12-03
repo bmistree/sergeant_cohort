@@ -55,6 +55,16 @@
         </antcall>
     </target>
 
+    <target
+        name="jar_append_entries"
+        depends="compile">
+        <antcall target="make_jar">
+          <param name="main_class" value="AppendEntriesTest"/>
+          <param name="dest_jar" value="append_entries.jar"/>
+        </antcall>
+    </target>
+
+    
     <!-- Make a jar -->
     <target
         name="make_jar"
