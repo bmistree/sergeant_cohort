@@ -40,6 +40,8 @@ public class Log
         // add an empty log entry so that don't have to special-case
         // having an empty log.  Note that commit_index, etc starts
         // appropriately.
+        //byte[] dummy = new byte[0];
+        //log.add(new LogEntry(dummy,0));
         log.add(new LogEntry(null,0));
     }
 

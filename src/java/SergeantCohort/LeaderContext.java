@@ -23,7 +23,7 @@ public class LeaderContext
        known to be replicated on node.  Starts at 0.
      */
     final protected Map<Long,Long> match_index_map = new HashMap<Long,Long>();
-
+    
     final protected Log log;
     
     /**
@@ -39,7 +39,7 @@ public class LeaderContext
     {
         this.log = log;
         long current_log_size = this.log.size();
-        
+
         for (ICohortConnection connection : cohort_connections)
         {
             long remote_cohort_id = connection.remote_cohort_id();
@@ -58,6 +58,9 @@ public class LeaderContext
         long index_to_send_from =
             next_index_map.get(to_send_to_cohort_id);
 
+        if (index_to_send_from == 0)
+            System.out.println("\nIndex to send from is zero\n\n");
+        
         AppendEntries.Builder to_return = 
             log.leader_append(view_number,local_cohort_id,index_to_send_from);
         
@@ -112,18 +115,19 @@ public class LeaderContext
             long new_match_index =
                 in_response_to.getPrevLogIndex() +
                 ((long)in_response_to.getEntriesList().size());
-            
+
             match_index_map.put(remote_cohort_id,new_match_index);
 
             // update next index
-            next_index_map.put(remote_cohort_id,new_match_index);
+            next_index_map.put(remote_cohort_id,new_match_index + 1);
             return null;
         }
 
         // failed, decrement next index and try to retransmit
         long prev_next_index = next_index_map.get(remote_cohort_id);
-        next_index_map.put(remote_cohort_id,prev_next_index - 1);
-
+        long new_match_index = prev_next_index -1;
+        next_index_map.put(remote_cohort_id,new_match_index);
+        
         return produce_leader_append(
             view_number, local_cohort_id,remote_cohort_id);
     }
