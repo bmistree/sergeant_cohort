@@ -153,14 +153,12 @@ public class Log
 
     protected void try_apply()
     {
-        for (long i = last_applied; i <= commit_index; ++i)
+        while(commit_index > last_applied)
         {
+            ++last_applied;
             for (IApplyEntryListener listener : apply_entry_listener_set)
-                listener.apply_entry(log.get((int)i).contents);
+                listener.apply_entry(log.get((int)last_applied).contents);
         }
-        
-        if (commit_index >= last_applied)
-            last_applied = commit_index;
     }
     
     /**

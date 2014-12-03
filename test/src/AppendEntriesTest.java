@@ -20,7 +20,8 @@ public class AppendEntriesTest
     public final static int HEARTBEAT_TIMEOUT_PERIOD_MS = 500;
     public final static int HEARTBEAT_SEND_PERIOD_MS = 150;
 
-    public final static int NUM_ENTRIES = 100;
+    //public final static int NUM_ENTRIES = 100;
+    public final static int NUM_ENTRIES = 1;
     
     public static void main(String[] args)
     {
@@ -125,5 +126,4 @@ public class AppendEntriesTest
             ++num_times_applied;
         }
     }
-    
 }
