@@ -75,8 +75,6 @@ public abstract class CohortMessageSendingBase
     @Override
     public boolean send_message (CohortMessage.Builder msg)
     {
-        msg.setSequenceNumber(0);
-        msg.setAckNumber(0);
         connection_specific_send_message(msg);
         return true;
     }

@@ -9,14 +9,9 @@ import "new_leader.proto";
 
 message CohortMessage
 {
-    // First message should have a sequence number of one.  And an ack
-    // number of zero.  Acks are cumulative.
-    required uint64 sequence_number = 1;
-    required uint64 ack_number = 2;
-    
-    optional AppendEntries append_entries = 3;
-    optional AppendEntriesResponse append_entries_response = 4;
-    optional ElectionProposal election_proposal = 5;
-    optional ElectionProposalResponse election_proposal_response = 6;
-    optional NewLeader new_leader = 8;
+    optional AppendEntries append_entries = 1;
+    optional AppendEntriesResponse append_entries_response = 2;
+    optional ElectionProposal election_proposal = 3;
+    optional ElectionProposalResponse election_proposal_response = 4;
+    optional NewLeader new_leader = 5;
 }
