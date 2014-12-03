@@ -175,6 +175,18 @@ public class CohortManager
         start_elect_self_thread(0);
     }
 
+    public void add_apply_entry_listener(
+        IApplyEntryListener to_add)
+    {
+        log.add_apply_entry_listener(to_add);
+    }
+
+    public void remove_apply_entry_listener(
+        IApplyEntryListener to_remove)
+    {
+        log.remove_apply_entry_listener(to_remove);
+    }
+    
     /**
        For debugging.
        
