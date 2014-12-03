@@ -8,7 +8,6 @@ import java.io.IOException;
 import ProtocolLibs.CohortMessageProto.CohortMessage;
 
 import SergeantCohort.Util;
-import SergeantCohort.ILastViewNumberSupplier;
 import SergeantCohort.CohortInfo;
 
 public class TCPCohortConnection
@@ -35,13 +34,9 @@ public class TCPCohortConnection
 
     
     public TCPCohortConnection(
-        CohortInfo local_cohort_info, CohortInfo remote_cohort_info,
-        int heartbeat_timeout_period_ms, int heartbeat_send_period_ms,
-        ILastViewNumberSupplier view_number_supplier)
+        CohortInfo local_cohort_info, CohortInfo remote_cohort_info)
+
     {
-        super(
-            heartbeat_timeout_period_ms,heartbeat_send_period_ms,
-            view_number_supplier);
         this.local_cohort_info = local_cohort_info;
         this.remote_cohort_info = remote_cohort_info;
     }
@@ -289,7 +284,6 @@ public class TCPCohortConnection
     @Override
     public void start_service()
     {
-        start_heartbeat_services();
         // Try to initially connect to other side, or to start the
         // initial connection.
         non_blocking_listen_or_connect();
@@ -311,26 +305,16 @@ public class TCPCohortConnection
     public void handle_connection_up(ICohortConnection up_connection)
     {}
     
-    public static class TCPCohortConnectionFactory
+    protected static class TCPCohortConnectionFactory
         implements ICohortConnectionFactory
     {
-        final private int heartbeat_timeout_period_ms;
-        final private int heartbeat_send_period_ms;
-        
-        public TCPCohortConnectionFactory(
-            int heartbeat_timeout_period_ms, int heartbeat_send_period_ms)
-        {
-            this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
-            this.heartbeat_send_period_ms = heartbeat_send_period_ms;
-        }
-        
         public ICohortConnection construct(
-            CohortInfo local_info, CohortInfo remote_info,
-            ILastViewNumberSupplier view_number_supplier)
+            CohortInfo local_info, CohortInfo remote_info)
         {
-            return new TCPCohortConnection(
-                local_info,remote_info, heartbeat_timeout_period_ms,
-                heartbeat_send_period_ms, view_number_supplier);
+            return new TCPCohortConnection(local_info,remote_info);
         }
     }
+
+    public static final TCPCohortConnectionFactory CONNECTION_FACTORY =
+        new TCPCohortConnectionFactory();
 }

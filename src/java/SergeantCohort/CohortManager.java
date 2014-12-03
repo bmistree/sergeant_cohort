@@ -3,6 +3,7 @@ package SergeantCohort;
 import java.util.Random;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.ArrayList;
 import java.util.concurrent.locks.ReentrantLock;
 
 import ProtocolLibs.CohortMessageProto.CohortMessage;
@@ -22,8 +23,8 @@ import SergeantCohort.CohortConnection.ICohortMessageListener;
    amongst them.
  */
 public class CohortManager
-    implements ICohortManager, ICohortConnectionListener,
-               ICohortMessageListener, ILastViewNumberSupplier
+    implements ICohortManager, ICohortMessageListener,
+               ILeaderDownListener, IAppendEntriesSupplier
 {
     /**
        How long to wait before retrying reelecting self.
@@ -39,6 +40,18 @@ public class CohortManager
      */
     public final static long MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT = 300L;
 
+    /**
+       If we do not receive a heartbeat message in this period of ms,
+       then we determine that the connection is dead and notify
+       connection listeners.
+     */
+    protected final int heartbeat_timeout_period_ms;
+    /**
+       TCPCohortConnection should send a heartbeat this frequently.
+     */
+    protected final int heartbeat_send_period_ms;
+
+    
     protected final static Random rand = new Random();
 
     protected final Log log = new Log();
@@ -48,6 +61,17 @@ public class CohortManager
         ELECTION, LEADER, FOLLOWER;
     }
 
+    /**
+       Should only be non-null when we become leader. When stop being
+       leader, it will automaticaly stop itself.
+     */
+    protected HeartbeatSendingService heartbeat_sending_service = null;
+    /**
+       Should only be non-null when we become a follower.  When stop
+       being follower, should explicitly stop it.
+     */
+    protected HeartbeatListeningService heartbeat_listening_service = null;
+    
     /**
        Each node starts in initial state of election.
      */
@@ -113,26 +137,27 @@ public class CohortManager
     public CohortManager(
         Set<CohortInfo.CohortInfoPair> connection_info,
         ICohortConnectionFactory cohort_connection_factory,
-        long local_cohort_id)
+        long local_cohort_id, int heartbeat_timeout_period_ms,
+        int heartbeat_send_period_ms)
     {
         for (CohortInfo.CohortInfoPair pair : connection_info)
         {
             ICohortConnection connection =
                 cohort_connection_factory.construct(
-                    pair.local_cohort_info,pair.remote_cohort_info,
-                    this);
+                    pair.local_cohort_info,pair.remote_cohort_info);
+
             cohort_connections.add(connection);
 
             // subscribe as connection and message listeners
-            connection.add_connection_listener(this);
             connection.add_cohort_message_listener(this);
         }
 
         // added one because connection info does not include me.
         quorum_size = ((int)((connection_info.size() + 1)/2.)) + 1;
         
-        
         this.local_cohort_id = local_cohort_id;
+        this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
+        this.heartbeat_send_period_ms = heartbeat_send_period_ms;
     }
 
     /**
@@ -296,40 +321,6 @@ public class CohortManager
         Util.force_assert("Must fill in submit_command method");
     }
 
-    /***** ICohortConnectionListener overrides*/
-    @Override
-    public void handle_connection_timeout(ICohortConnection cohort_connection)
-    {
-        state_lock.lock();
-        
-        try
-        {
-            long remote_timed_out_id = cohort_connection.remote_cohort_id();
-            if (state == ManagerState.FOLLOWER)
-            {
-                // if leader times out, then try to elect self as new
-                // leader.
-                if (current_leader_id.equals(remote_timed_out_id))
-                {
-                    current_leader_id = null;
-                    state = ManagerState.ELECTION;
-                    start_elect_self_thread(0);
-                }
-            }
-        }
-        finally
-        {
-            state_lock.unlock();
-        }
-    }
-    
-    @Override
-    public void handle_connection_up(ICohortConnection cohort_connection)
-    {
-        // can ignore connection up messages: other node will contact
-        // us if wants to reelect itself.
-    }
-
 
     /***************** ICohortMessageListener overrides ********/
 
@@ -352,9 +343,20 @@ public class CohortManager
                 return;
             
             state = ManagerState.FOLLOWER;
+            heartbeat_sending_service = null;
+
+            heartbeat_listening_service =
+                new HeartbeatListeningService(
+                    heartbeat_timeout_period_ms,this,
+                    cohort_connection.remote_cohort_id(),
+                    new_leader.getViewNumber());
+            heartbeat_listening_service.start_service();
+            
+            
             election_context = null;
             current_leader_id = cohort_connection.remote_cohort_id();
             view_number = new_leader.getViewNumber();
+                                              
             // FIXME: should we notify anyone that we'll receive
             // messages again (or forward them on)???
         }
@@ -387,10 +389,14 @@ public class CohortManager
         boolean success = false;
         long nonce = append_entries.getNonce();
         long current_view_number = 0;
-        
+
         state_lock.lock();
         try
         {
+            // so that do not timeout the connection.
+            if (heartbeat_listening_service != null)
+                heartbeat_listening_service.append_entries_message();
+            
             current_view_number = view_number;
             
             if (current_view_number > append_entries.getViewNumber())
@@ -492,6 +498,8 @@ public class CohortManager
                     {
                         current_leader_id = null;
                         state = ManagerState.ELECTION;
+                        heartbeat_sending_service = null;
+                        
                         // calling this here handles the case that the
                         // election sender fails: if we aren't in a
                         // stable state after
@@ -572,6 +580,14 @@ public class CohortManager
                 election_context = null;
                 state = ManagerState.LEADER;
 
+                // start heartbeats
+                heartbeat_sending_service =
+                    new HeartbeatSendingService(
+                        heartbeat_send_period_ms, cohort_connections,
+                        this);
+                heartbeat_sending_service.start();
+                
+                
                 // tell all other nodes that I am now leader
                 NewLeader.Builder new_leader = NewLeader.newBuilder();
                 new_leader.setViewNumber(view_number);
@@ -592,10 +608,55 @@ public class CohortManager
     }
 
 
-    /************** ILastViewNumberSupplier Overrides *******/
+    /******** IAppendEntriesSupplier overrides ******/
+    /**
+       Returns null if we are no longer leader.
+     */
     @Override
-    public long last_view_number()
+    public AppendEntries.Builder construct()
     {
-        return view_number;
+        state_lock.lock();
+        try
+        {
+            if (state != ManagerState.LEADER)
+                return null;
+
+            return log.leader_append(
+                new ArrayList<byte[]>(),view_number,local_cohort_id);
+        }
+        finally
+        {
+            state_lock.unlock();
+        }
+    }
+
+    /************ ILeaderDownListener overrides ********/
+    @Override
+    public void leader_down(long leader_id, long view_number)
+    {
+        state_lock.lock();
+        try
+        {
+            if (heartbeat_listening_service != null)
+                heartbeat_listening_service.stop_service();
+            
+            if (state != ManagerState.FOLLOWER)
+                return;
+
+            if (view_number != view_number)
+                return;
+
+
+            // transition into election state 
+            current_leader_id = null;
+            state = ManagerState.ELECTION;
+            heartbeat_sending_service = null;
+            start_elect_self_thread(0);
+            
+        }
+        finally
+        {
+            state_lock.unlock();
+        }
     }
 }

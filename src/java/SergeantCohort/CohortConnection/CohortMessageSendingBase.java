@@ -10,67 +10,51 @@ import java.util.concurrent.locks.ReentrantLock;
 import ProtocolLibs.CohortMessageProto.CohortMessage;
 
 import SergeantCohort.Util;
-import SergeantCohort.ILastViewNumberSupplier;
 import SergeantCohort.CohortInfo;
 
 public abstract class CohortMessageSendingBase
     extends CohortHeartbeatBase
 {
-    public CohortMessageSendingBase(
-        int heartbeat_timeout_period_ms,int heartbeat_send_period_ms,
-        ILastViewNumberSupplier view_number_supplier)
-    {
-        super(
-            heartbeat_timeout_period_ms,heartbeat_send_period_ms,
-            view_number_supplier);
-    }
-
     /**
        Message parser for received messages.
      */
     protected void handle_message(CohortMessage msg)
     {
-        // handle heartbeat messages immediately.
-        if (msg.hasHeartbeat())
-            handle_heartbeat_message(msg.getHeartbeat());
-        else
+        message_listener_lock.lock();
+        for (ICohortMessageListener msg_listener : message_listener_set)
         {
-            message_listener_lock.lock();
-            for (ICohortMessageListener msg_listener : message_listener_set)
+            if (msg.hasAppendEntries())
             {
-                if (msg.hasAppendEntries())
-                {
-                    msg_listener.append_entries(this,msg.getAppendEntries());
-                }
-                else if (msg.hasAppendEntriesResponse())
-                {
-                    msg_listener.append_entries_response(
-                        this,msg.getAppendEntriesResponse());
-                }
-                else if (msg.hasElectionProposal())
-                {
-                    msg_listener.election_proposal(
-                        this,msg.getElectionProposal());
-                }
-                else if (msg.hasElectionProposalResponse())
-                {
-                    msg_listener.election_proposal_response(
-                        this,msg.getElectionProposalResponse());
-                }
-                else if (msg.hasNewLeader())
-                {
-                    msg_listener.new_leader(this,msg.getNewLeader());
-                }
-                //// DEBUG
-                else
-                {
-                    Util.force_assert(
-                        "Unknown message type in connection base.");
-                }
-                //// END DEBUG
+                msg_listener.append_entries(this,msg.getAppendEntries());
             }
-            message_listener_lock.unlock();
+            else if (msg.hasAppendEntriesResponse())
+            {
+                msg_listener.append_entries_response(
+                    this,msg.getAppendEntriesResponse());
+            }
+            else if (msg.hasElectionProposal())
+            {
+                msg_listener.election_proposal(
+                    this,msg.getElectionProposal());
+            }
+            else if (msg.hasElectionProposalResponse())
+            {
+                msg_listener.election_proposal_response(
+                    this,msg.getElectionProposalResponse());
+            }
+            else if (msg.hasNewLeader())
+            {
+                msg_listener.new_leader(this,msg.getNewLeader());
+            }
+            //// DEBUG
+            else
+            {
+                Util.force_assert(
+                    "Unknown message type in connection base.");
+            }
+            //// END DEBUG
         }
+        message_listener_lock.unlock();
     }
     
     
