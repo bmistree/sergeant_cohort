@@ -1,8 +1,0 @@
-option java_package = "ProtocolLibs";
-option java_outer_classname = "HeartbeatProto";
-
-message Heartbeat
-{
-    // view_number may not even be necessary.
-    required uint64 view_number = 1;
-}
