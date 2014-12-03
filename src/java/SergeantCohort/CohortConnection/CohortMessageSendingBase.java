@@ -14,30 +14,8 @@ import SergeantCohort.ILastViewNumberSupplier;
 import SergeantCohort.CohortInfo;
 
 public abstract class CohortMessageSendingBase
-    extends CohortHeartbeatBase implements ICohortConnectionListener
+    extends CohortHeartbeatBase
 {
-    private final static int MAX_NUM_OUTSTANDING_UNACKED_MESSAGES = 100;
-    
-    /**
-       The last sequence number we sent to the other side.
-     */
-    protected long last_sequence_number_sent = 0;
-    protected final List<CohortMessage.Builder> unacked_sent_messages =
-        new ArrayList<CohortMessage.Builder>();
-    protected final ReentrantLock sent_messages_queue_lock = new ReentrantLock();
-
-    /**
-       All received messages get inserted into this map.  Key is its
-       sequence number, value is the actual message.  Allows us to
-       handle out-of-orderness.
-    */
-    private final Map<Long,CohortMessage> received_message_map =
-        new HashMap<Long,CohortMessage>();
-    protected long last_sequence_number_received = 0;
-    protected final ReentrantLock received_message_queue_lock =
-        new ReentrantLock();
-
-    
     public CohortMessageSendingBase(
         int heartbeat_timeout_period_ms,int heartbeat_send_period_ms,
         ILastViewNumberSupplier view_number_supplier)
@@ -46,85 +24,11 @@ public abstract class CohortMessageSendingBase
             heartbeat_timeout_period_ms,heartbeat_send_period_ms,
             view_number_supplier);
     }
-    
-    
-    /**
-       @returns the sequence number to acknowledge.
-     */
-    protected long get_sequence_number_to_ack()
-    {
-        try
-        {
-            received_message_queue_lock.lock();
-            return last_sequence_number_received;
-        }
-        finally
-        {
-            received_message_queue_lock.unlock();
-        }
-    }
 
     /**
        Message parser for received messages.
      */
     protected void handle_message(CohortMessage msg)
-    {
-        //// FIRST: process acks associated with received message.
-        sent_messages_queue_lock.lock();
-        // Can remove all messages that we have sequence numbers for.
-        long last_acked_sequence_number = msg.getAckNumber();
-        while (! unacked_sent_messages.isEmpty())
-        {
-            CohortMessage.Builder oldest_unacked =
-                unacked_sent_messages.get(0);
-
-            if (oldest_unacked.getSequenceNumber() >
-                last_acked_sequence_number)
-            {
-                break;
-            }
-            // remove front element
-            unacked_sent_messages.remove(0);
-        }
-        sent_messages_queue_lock.unlock();
-
-        
-        //// SECOND: actually process received messages (with some
-        //// logic to ensure ordering).
-
-        // insert received message into map
-        received_message_queue_lock.lock();
-        try
-        {
-            long msg_seq_num = msg.getSequenceNumber();
-            if (msg_seq_num <= last_sequence_number_received)
-                return;
-
-            received_message_map.put(msg.getSequenceNumber(),msg);
-            // break out of for loop when no longer have ordered map
-            // indices.
-            for (long map_index = last_sequence_number_received + 1;
-                 ; ++ map_index)
-            {
-                CohortMessage msg_to_process =
-                    received_message_map.remove(map_index);
-                if (msg_to_process == null)
-                    break;
-
-                process_message(msg_to_process);
-                last_sequence_number_received++;
-            }
-        }
-        finally
-        {
-            received_message_queue_lock.unlock();
-        }
-    }
-
-    /**
-       Actually process the message, notifying subscribed handlers.
-     */
-    private void process_message(CohortMessage msg)
     {
         // handle heartbeat messages immediately.
         if (msg.hasHeartbeat())
@@ -182,66 +86,14 @@ public abstract class CohortMessageSendingBase
 
     /**
        @returns --- true if message has been enqueued for eventual
-       delivery.  false otherwise.
+       delivery.  false otherwise.  Will always return true.
      */
     @Override
     public boolean send_message (CohortMessage.Builder msg)
     {
-        sent_messages_queue_lock.lock();
-        try
-        {
-            if (unacked_sent_messages.size() >=
-                MAX_NUM_OUTSTANDING_UNACKED_MESSAGES)
-            {
-                return false;
-            }
-
-            ++last_sequence_number_sent;
-            msg.setSequenceNumber(last_sequence_number_sent);
-            msg.setAckNumber(get_sequence_number_to_ack());
-            unacked_sent_messages.add(msg);
-            connection_specific_send_message(msg);
-            return true;
-        }
-        finally
-        {
-            sent_messages_queue_lock.unlock();
-        }
-    }
-
-
-    /********************* ICohortConnectionListener overrides ***********/
-
-    /**
-       @param timed_out_connection --- Should just be this.
-     */
-    @Override
-    public abstract void handle_connection_timeout(
-        ICohortConnection timed_out_connection);
-    
-    /**
-       Gets executed if connection goes from not set up to setup or we
-       receive a notification that the connection is back up after the
-       connection had timed out.  We should retransmit messages in our
-       outstanding message queue.
-
-       @param up_connection --- Should just be this.
-     */
-    @Override
-    public void handle_connection_up(
-        ICohortConnection up_connection)
-    {
-        sent_messages_queue_lock.lock();
-        try
-        {
-            // retransmit messages that may not have reached other
-            // side.
-            for (CohortMessage.Builder to_retransmit : unacked_sent_messages)
-                connection_specific_send_message(to_retransmit);
-        }
-        finally
-        {
-            sent_messages_queue_lock.unlock();
-        }
+        msg.setSequenceNumber(0);
+        msg.setAckNumber(0);
+        connection_specific_send_message(msg);
+        return true;
     }
 }

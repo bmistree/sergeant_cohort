@@ -11,7 +11,9 @@ import SergeantCohort.Util;
 import SergeantCohort.ILastViewNumberSupplier;
 import SergeantCohort.CohortInfo;
 
-public class TCPCohortConnection extends CohortMessageSendingBase
+public class TCPCohortConnection
+    extends CohortMessageSendingBase implements ICohortConnectionListener
+                                 
 {
     protected final static int CONNECTION_RETRY_WAIT_PERIOD_MS = 500;
 
@@ -305,6 +307,9 @@ public class TCPCohortConnection extends CohortMessageSendingBase
         non_blocking_listen_or_connect();
     }
 
+    @Override
+    public void handle_connection_up(ICohortConnection up_connection)
+    {}
     
     public static class TCPCohortConnectionFactory
         implements ICohortConnectionFactory
