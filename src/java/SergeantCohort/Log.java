@@ -11,9 +11,11 @@ public class Log
 {
     protected final List<LogEntry> log = new ArrayList<LogEntry>();
     /**
-       The last known externalized index in the log.
+       The last known externalized index in the log.  Starting at zero
+       here because all logs start with a dummy entry (that way don't
+       have to special-case having empty log).
      */
-    protected long commit_index = -1;
+    protected long commit_index = 0;
 
     /**
        Increment each time that we create an AppendEntries.Builder in
@@ -25,8 +27,72 @@ public class Log
     public Log()
     {
         // add an empty log entry so that don't have to special-case
-        // having an empty log.
+        // having an empty log.  Note that commit_index, etc starts
+        // appropriately.
         log.add(new LogEntry(null,0));
+    }
+    
+
+    /**
+       2. Reply false if log doesn't contain an entry at prevLogIndex
+       whose term matches prevLogTerm
+       3. If an existing entry conflicts with a new one (same index
+       but different terms), delete the existing entry and all that
+       follow it
+       4. Append any new entries not already in the log
+       5. If leaderCommit > commitIndex, set commitIndex =
+       min(leaderCommit, index of last new entry)
+     */
+    public synchronized boolean handle_append_entries(
+        AppendEntries append_entries)
+    {
+        long msg_term = append_entries.getViewNumber();
+        long leader_commit_index = append_entries.getLeaderCommitIndex();
+        
+        
+        // Reply false if log doesn't contain an entry at prevLogIndex
+        // whose term matches prevLogTerm
+        long msg_prev_log_index = append_entries.getPrevLogIndex();
+        if (msg_prev_log_index > (log.size() - 1))
+            return false;
+
+
+        // If an existing entry conflicts with a new one (same index
+        // but different terms), delete the existing entry and all that
+        // follow it
+        int insertion_index = ((int)msg_prev_log_index) + 1;
+        // true if a message conflicted with version 
+        boolean conflict = false;
+        for (ByteString entry : append_entries.getEntriesList())
+        {
+            byte[] entry_as_byte_array = entry.toByteArray();
+            LogEntry new_log_entry = new LogEntry(entry_as_byte_array,msg_term);
+            
+            if (insertion_index >= log.size())
+                log.add(new_log_entry);
+            else
+            {
+                LogEntry prev_log_entry = log.get(insertion_index);
+                if (prev_log_entry.term != msg_term)
+                    conflict = true;
+                log.set(insertion_index,new_log_entry);
+            }
+            ++insertion_index;
+        }
+
+        // if there was a conflict, then we need to delete all
+        // subsequent entries that had been stored in log at insertion
+        // index and later.
+        int number_of_tail_removes = log.size() + 1 - insertion_index;
+        for (int i = 0; i < number_of_tail_removes; ++i)
+            log.remove(log.size() -1 );
+        
+        // If leaderCommit > commitIndex, set commitIndex =
+        // min(leaderCommit, index of last new entry)
+        if (leader_commit_index > commit_index)
+            commit_index = Math.min(leader_commit_index, log.size() -1);
+        
+        return true;
     }
     
     /**
@@ -53,6 +119,7 @@ public class Log
         long prev_index = log.size() -1;
         to_return.setPrevLogIndex(prev_index);
         to_return.setPrevLogTerm(log.get((int)prev_index).term);
+        to_return.setLeaderCommitIndex(commit_index);
         
         return to_return;
     }

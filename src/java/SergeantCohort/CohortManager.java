@@ -40,6 +40,8 @@ public class CohortManager
     public final static long MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT = 300L;
 
     protected final static Random rand = new Random();
+
+    protected final Log log = new Log();
     
     protected enum ManagerState
     {
@@ -362,13 +364,58 @@ public class CohortManager
         }
     }
 
-    
+
+    /**
+       Receive append_entries command.
+
+       Directly from Raft paper:
+       
+       1. Reply false if term < currentTerm
+       2. Reply false if log doesn't contain an entry at prevLogIndex
+       whose term matches prevLogTerm
+       3. If an existing entry conflicts with a new one (same index
+       but different terms), delete the existing entry and all that
+       follow it
+       4. Append any new entries not already in the log
+       5. If leaderCommit > commitIndex, set commitIndex =
+       min(leaderCommit, index of last new entry)
+     */
     @Override
     public void append_entries(
         ICohortConnection cohort_connection,AppendEntries append_entries)
     {
-        // FIXME: Fill in stub
-        Util.force_assert("Must fill in append_entries stub");
+        boolean success = false;
+        long nonce = append_entries.getNonce();
+        long current_view_number = 0;
+        
+        state_lock.lock();
+        try
+        {
+            current_view_number = view_number;
+            
+            if (current_view_number > append_entries.getViewNumber())
+            {
+                success = false;
+                return;
+            }
+
+            success = log.handle_append_entries(append_entries);
+        }
+        finally
+        {
+            state_lock.unlock();
+
+            // generate and send response
+            AppendEntriesResponse.Builder append_entries_response =
+                AppendEntriesResponse.newBuilder();
+            append_entries_response.setNonce(nonce);
+            append_entries_response.setViewNumber(current_view_number);
+            append_entries_response.setSuccess(success);
+
+            CohortMessage.Builder cohort_message = CohortMessage.newBuilder();
+            cohort_message.setAppendEntriesResponse(append_entries_response);
+            cohort_connection.send_message(cohort_message);
+        }
     }
 
     @Override
