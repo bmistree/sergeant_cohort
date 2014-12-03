@@ -60,7 +60,15 @@ public class Log
         commit_index = new_index;
         try_apply();
     }
-    
+
+    /**
+       Should only be called by leader.
+     */
+    public synchronized void add_to_log(byte[] contents,long term)
+    {
+        LogEntry log_entry = new LogEntry(contents,term);
+        log.add(log_entry);
+    }
     
     public synchronized int size()
     {
@@ -223,5 +231,4 @@ public class Log
             this.term = term;
         }
     }
-    
 }

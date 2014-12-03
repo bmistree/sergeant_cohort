@@ -175,6 +175,29 @@ public class CohortManager
         start_elect_self_thread(0);
     }
 
+    /**
+       If node is not currently the leader, it will not add the
+       requested entry.
+       
+       @returns the leader id.  returns null if there is currently no
+       leader.
+     */
+    public Long add_entry_if_leader(byte[] entry_to_try_to_add)
+    {
+        state_lock.lock();
+        try
+        {
+            if (state == ManagerState.LEADER)
+                log.add_to_log(entry_to_try_to_add,view_number);
+
+            return current_leader_id;
+        }
+        finally
+        {
+            state_lock.unlock();
+        }
+    }
+    
     public void add_apply_entry_listener(
         IApplyEntryListener to_add)
     {
