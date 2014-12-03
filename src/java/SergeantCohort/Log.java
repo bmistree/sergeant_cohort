@@ -1,5 +1,8 @@
 package SergeantCohort;
 
+import java.util.Set;
+import java.util.HashSet;
+
 import java.util.List;
 import java.util.ArrayList;
 
@@ -24,6 +27,14 @@ public class Log
      */
     protected long nonce_generator = 0;
 
+    /**
+       Index of highest log entry applied to state machine.
+     */
+    protected long last_applied = 0;
+
+    protected Set<IApplyEntryListener> apply_entry_listener_set =
+        new HashSet<IApplyEntryListener>();
+    
     public Log()
     {
         // add an empty log entry so that don't have to special-case
@@ -31,7 +42,6 @@ public class Log
         // appropriately.
         log.add(new LogEntry(null,0));
     }
-    
 
     public synchronized int size()
     {
@@ -96,6 +106,15 @@ public class Log
         // min(leaderCommit, index of last new entry)
         if (leader_commit_index > commit_index)
             commit_index = Math.min(leader_commit_index, log.size() -1);
+
+        for (long i = last_applied; i <= commit_index; ++i)
+        {
+            for (IApplyEntryListener listener : apply_entry_listener_set)
+                listener.apply_entry(log.get((int)i).contents);
+        }
+        
+        if (commit_index > last_applied)
+            last_applied = commit_index;
         
         return true;
     }
@@ -131,7 +150,7 @@ public class Log
     
     protected class LogEntry
     {
-        protected final byte[] contents;
+        public final byte[] contents;
         protected final long term;
 
         public LogEntry(byte[] contents, long term)
