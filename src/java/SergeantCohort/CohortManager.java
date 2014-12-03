@@ -424,6 +424,9 @@ public class CohortManager
         }
     }
 
+    /**
+       When receive an append entries response
+     */
     @Override
     public void append_entries_response(
         ICohortConnection cohort_connection,
@@ -433,6 +436,7 @@ public class CohortManager
         Util.force_assert("Must fill in append_entries_response stub");
     }
 
+    
     /**
        We received an election proposal request.
 

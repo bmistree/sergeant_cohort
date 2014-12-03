@@ -33,6 +33,11 @@ public class Log
     }
     
 
+    public synchronized int size()
+    {
+        return log.size();
+    }
+    
     /**
        2. Reply false if log doesn't contain an entry at prevLogIndex
        whose term matches prevLogTerm
