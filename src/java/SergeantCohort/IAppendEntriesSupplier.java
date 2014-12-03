@@ -7,5 +7,5 @@ public interface IAppendEntriesSupplier
     /**
        @returns {null} if not still leader
      */
-    public AppendEntries.Builder construct();
+    public AppendEntries.Builder construct(long remote_cohort_id);
 }

@@ -121,11 +121,28 @@ public class Log
     
     /**
        Called by leader to generate a new set of entries
+       
+       @param index_to_send_from --- If -1, then ignore.  Otherwise,
+       send all entries from index_to_send_from onwards.
      */
     public synchronized AppendEntries.Builder leader_append(
-        List<byte[]> new_entries,long view_number,long leader_cohort_id)
+        long view_number,long leader_cohort_id,
+        long index_to_send_from)
     {
         nonce_generator += 1;
+        
+        List<byte[]> new_entries = new ArrayList<byte[]>();
+        long prev_index = log.size() -1;
+        if (index_to_send_from != -1)
+        {
+            prev_index = index_to_send_from -1;
+            // FIXME: using int here instead of long.
+            for (int i = (int)index_to_send_from; i < log.size(); ++i)
+            {
+                LogEntry entry  = log.get(i);
+                new_entries.add(entry.contents);
+            }
+        }
 
         AppendEntries.Builder to_return = AppendEntries.newBuilder();
         to_return.setNonce(nonce_generator);
@@ -140,11 +157,9 @@ public class Log
 
         // note: because added an element to log in constructor, don't
         // have to deal with edge case of empty log.
-        long prev_index = log.size() -1;
         to_return.setPrevLogIndex(prev_index);
         to_return.setPrevLogTerm(log.get((int)prev_index).term);
         to_return.setLeaderCommitIndex(commit_index);
-        
         return to_return;
     }
     

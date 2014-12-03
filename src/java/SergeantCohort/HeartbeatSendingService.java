@@ -35,16 +35,19 @@ public class HeartbeatSendingService extends Thread
        connection.
      */
     protected boolean send_heartbeat()
-    {
-        AppendEntries.Builder append_entries =
-            append_entries_supplier.construct();
-        if (append_entries == null)
-            return false;
-        
-        CohortMessage.Builder msg = CohortMessage.newBuilder();
-        msg.setAppendEntries(append_entries);
+    {        
         for (ICohortConnection connection : connection_set)
+        {
+            AppendEntries.Builder append_entries =
+                append_entries_supplier.construct(
+                    connection.remote_cohort_id());
+            if (append_entries == null)
+                return false;
+
+            CohortMessage.Builder msg = CohortMessage.newBuilder();
+            msg.setAppendEntries(append_entries);
             connection.send_message(msg);
+        }
         return true;
     }
 

@@ -437,8 +437,35 @@ public class CohortManager
         ICohortConnection cohort_connection,
         AppendEntriesResponse append_entries_response)
     {
-        // FIXME: Fill in stub
-        Util.force_assert("Must fill in append_entries_response stub");
+        AppendEntries.Builder to_send_back = null;
+        state_lock.lock();
+        try
+        {
+            // ignore message if we are no longer the leader
+            if (state != ManagerState.LEADER)
+                return;
+
+            to_send_back =
+                leader_context.handle_append_entries_response(
+                    append_entries_response, local_cohort_id,
+                    view_number, cohort_connection.remote_cohort_id());
+        }
+        finally
+        {
+            state_lock.unlock();
+        }
+
+        
+        // if other node was out of date, then need to actually
+        // send an update to it.
+        if (to_send_back == null)
+            return;
+        
+
+        CohortMessage.Builder append_entries_update =
+            CohortMessage.newBuilder();
+        append_entries_update.setAppendEntries(to_send_back);
+        cohort_connection.send_message(append_entries_update);
     }
 
     
@@ -596,7 +623,7 @@ public class CohortManager
                         this);
                 heartbeat_sending_service.start();
                 leader_context =
-                    new LeaderContext(cohort_connections,log.size());
+                    new LeaderContext(cohort_connections,log);
                 
                 
                 // tell all other nodes that I am now leader
@@ -624,16 +651,15 @@ public class CohortManager
        Returns null if we are no longer leader.
      */
     @Override
-    public AppendEntries.Builder construct()
+    public AppendEntries.Builder construct(long remote_cohort_id)
     {
         state_lock.lock();
         try
         {
             if (state != ManagerState.LEADER)
                 return null;
-
-            return log.leader_append(
-                new ArrayList<byte[]>(),view_number,local_cohort_id);
+            return leader_context.produce_leader_append(
+                view_number,local_cohort_id,remote_cohort_id);
         }
         finally
         {
