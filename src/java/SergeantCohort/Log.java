@@ -98,7 +98,7 @@ public class Log
         // if there was a conflict, then we need to delete all
         // subsequent entries that had been stored in log at insertion
         // index and later.
-        int number_of_tail_removes = log.size() + 1 - insertion_index;
+        int number_of_tail_removes = log.size() - insertion_index;
         for (int i = 0; i < number_of_tail_removes; ++i)
             log.remove(log.size() -1 );
         
@@ -135,7 +135,8 @@ public class Log
         long prev_index = log.size() -1;
         if (index_to_send_from != -1)
         {
-            prev_index = index_to_send_from -1;
+            prev_index = Math.min(
+                index_to_send_from -1,log.size() - 1);
             // FIXME: using int here instead of long.
             for (int i = (int)index_to_send_from; i < log.size(); ++i)
             {
