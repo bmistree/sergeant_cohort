@@ -265,7 +265,10 @@ public class TCPCohortConnection
         {
             // means can't send message.
             if (socket == null)
+            {
+                socket_lock.unlock();
                 return;
+            }
             
             CohortMessage built_message = msg.build();
             built_message.writeDelimitedTo(socket.getOutputStream());
