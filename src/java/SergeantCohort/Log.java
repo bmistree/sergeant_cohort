@@ -110,8 +110,7 @@ public class Log
         long msg_prev_log_index = append_entries.getPrevLogIndex();
         if (msg_prev_log_index > (log.size() - 1))
             return false;
-
-
+        
         // If an existing entry conflicts with a new one (same index
         // but different terms), delete the existing entry and all that
         // follow it

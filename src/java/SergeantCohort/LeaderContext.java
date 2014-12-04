@@ -62,7 +62,11 @@ public class LeaderContext
             next_index_map.get(to_send_to_cohort_id);
 
         if (index_to_send_from == 0)
-            System.out.println("\nIndex to send from is zero\n\n");
+        {
+            System.out.println(
+                "\n\nIndex to send from is zero for id: " +
+                local_cohort_id + "\n\n");
+        }
         
         AppendEntries.Builder to_return = 
             log.leader_append(view_number,local_cohort_id,index_to_send_from);
@@ -134,6 +138,14 @@ public class LeaderContext
         // failed, decrement next index and try to retransmit
         long prev_next_index = next_index_map.get(remote_cohort_id);
         long new_next_index = prev_next_index -1;
+        if (new_next_index == 0)
+        {
+            Util.force_assert(
+                "\n\n Setting next index to zero for local cohort " +
+                local_cohort_id + " sending to remote cohort id " +
+                remote_cohort_id + " on view number " + view_number + 
+                "\n\n");
+        }
         next_index_map.put(remote_cohort_id,new_next_index);
         
         return produce_leader_append(

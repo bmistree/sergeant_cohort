@@ -26,6 +26,8 @@ public class CohortManager
     implements ICohortManager, ICohortMessageListener,
                ILeaderDownListener, IAppendEntriesSupplier
 {
+    public final static long UNKNOWN_LEADER_ID = -1;
+    
     /**
        How long to wait before retrying reelecting self.
      */
@@ -111,7 +113,8 @@ public class CohortManager
     protected final ReentrantLock state_lock = new ReentrantLock();
 
     /**
-       Start with no leader when in election state.
+       Start with no leader when in election state.  Set to -1 if do
+       not know who leader is.
      */
     protected Long current_leader_id = null;
     
@@ -408,21 +411,32 @@ public class CohortManager
        Called from within state_lock. when receive an append_entries
        message.
 
-       @param append_entries_view_number --- The 
+       @param append_entries_view_number --- The
+
+       @param new_leader_id --- Can be special UNKNOWN_LEADER_ID if
+       don't know who new leader is.
      */
     protected void check_new_leader(
-        long append_entries_view_number,
-        ICohortConnection cohort_connection)
+        long remote_view_number,long new_leader_id)
     {
-        if (append_entries_view_number < view_number)
+        if (remote_view_number < view_number)
             return;
 
         // if not already follower, then make self follower.
-        if ((append_entries_view_number == view_number) &&
+        if ((remote_view_number == view_number) &&
             (state == ManagerState.FOLLOWER))
         {
+            if ((current_leader_id == UNKNOWN_LEADER_ID) &&
+                (new_leader_id != UNKNOWN_LEADER_ID))
+            {
+                current_leader_id = new_leader_id;
+                notify_leader_listeners();
+            }
             return;
         }
+
+        // only other case is that remote view_number is greater than
+        // our current view number.
         
         state = ManagerState.FOLLOWER;
         heartbeat_sending_service = null;
@@ -431,16 +445,18 @@ public class CohortManager
         heartbeat_listening_service =
             new HeartbeatListeningService(
                 heartbeat_timeout_period_ms,this,
-                cohort_connection.remote_cohort_id(),
-                append_entries_view_number);
+                new_leader_id,
+                remote_view_number);
         heartbeat_listening_service.start_service();
             
             
         election_context = null;
-        current_leader_id = cohort_connection.remote_cohort_id();
-        view_number = append_entries_view_number;
-            
-        notify_leader_listeners();
+        current_leader_id = new_leader_id;
+        view_number = remote_view_number;
+
+
+        if (new_leader_id != UNKNOWN_LEADER_ID)
+            notify_leader_listeners();
     }
 
     
@@ -471,7 +487,8 @@ public class CohortManager
         try
         {
             check_new_leader(
-                append_entries.getViewNumber(),cohort_connection);
+                append_entries.getViewNumber(),
+                cohort_connection.remote_cohort_id());
             
             // so that do not timeout the connection.
             if (heartbeat_listening_service != null)
@@ -513,17 +530,31 @@ public class CohortManager
         AppendEntriesResponse append_entries_response)
     {
         AppendEntries.Builder to_send_back = null;
+        long append_entries_resp_view_num =
+            append_entries_response.getViewNumber();
         state_lock.lock();
         try
         {
-            // ignore message if we are no longer the leader
+            check_new_leader(
+                append_entries_resp_view_num, UNKNOWN_LEADER_ID);
+
+            // if message failed because other side was on future view
+            // number, then we will no logner be leader and below will
+            // be false. ignore message if we are no longer the leader
             if (state != ManagerState.LEADER)
                 return;
 
+            // if message failed because other side was on a previous
+            // view number, ignore.
+            if (append_entries_resp_view_num < view_number)
+                return;
+
+            
             to_send_back =
                 leader_context.handle_append_entries_response(
                     append_entries_response, local_cohort_id,
                     view_number, cohort_connection.remote_cohort_id());
+
         }
         finally
         {
@@ -693,6 +724,7 @@ public class CohortManager
                     new LeaderContext(cohort_connections,log,view_number);
 
                 current_leader_id = local_cohort_id;
+
                 notify_leader_listeners();
             }
         }
