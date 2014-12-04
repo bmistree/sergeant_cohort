@@ -7,6 +7,7 @@ import java.util.HashSet;
 import SergeantCohort.CohortManager;
 import SergeantCohort.CohortInfo;
 import SergeantCohort.CohortConnection.TCPCohortConnection;
+import SergeantCohort.ILeaderElectedListener;
 
 /**
    Start three nodes, two can't communicate and the third node can
@@ -100,19 +101,26 @@ public class LeaderFlappingTest
                 new CohortManager(
                     connection_info,TCPCohortConnection.CONNECTION_FACTORY,
                     cohort_id,HEARTBEAT_TIMEOUT_PERIOD_MS,
-                    HEARTBEAT_SEND_PERIOD_MS,cannot_be_leader);
+                    HEARTBEAT_SEND_PERIOD_MS, !cannot_be_leader);
             
             cohort_managers.add(cohort_manager);
         }
+
+        // Create a LeaderElectedListener and register it
+        LeaderElectedListener leader_elected_listener =
+            new LeaderElectedListener();
+            
+        for (CohortManager cohort_manager : cohort_managers)
+        {
+            cohort_manager.add_leader_elected_listener(
+                leader_elected_listener);
+        }
+
         
         // start all the managers.
         for (CohortManager cohort_manager : cohort_managers)
             cohort_manager.start_manager();
 
-        /*
-           FIXME: actually need to count the flappings instead of just
-           checking if there's a leader.
-         */
         
         // wait for a while and check if we have a leader.
         try
@@ -126,17 +134,32 @@ public class LeaderFlappingTest
             SergeantCohort.Util.force_assert("Some error.");
         }
 
-        // check that have one and only one leader
-        int num_leaders = 0;
-        for (CohortManager cohort_manager : cohort_managers)
-        {
-            if (cohort_manager.is_leader())
-                ++num_leaders;
-        }
-
-        if (num_leaders != 1)
-            return false;
+        // print number of leader changes that occurred.
+        System.out.println("\n\n");
+        System.out.println(
+            leader_elected_listener.total_number_leader_changes);
+        System.out.println("\n\n");
         
         return true;
     }
+
+
+    public static class LeaderElectedListener 
+        implements ILeaderElectedListener
+    {
+        // increments each time we change leaders.
+        public int total_number_leader_changes = 0;
+        
+        @Override
+        public void leader_elected(
+            long view_number, long leader_id, long local_cohort_id)
+        {
+            System.out.println(
+                "\nGot a leader elected; leader id: " +
+                leader_id + "; local_id: " + local_cohort_id +"\n");
+            if (leader_id == local_cohort_id)
+                ++ total_number_leader_changes;
+        }
+    }
+    
 }

@@ -303,10 +303,8 @@ public class CohortManager
      */
     private void elect_self_thread(int num_times_called)
     {
-        /**
-           Debugging boolean: if we cannot be leader, then don't
-           nominate self to be leader.
-         */
+        // Debugging boolean: if we cannot be leader, then don't
+        // nominate self to be leader.
         if (! debug_can_be_leader)
             return;
         
