@@ -60,7 +60,7 @@ public class CohortManager
     {
         ELECTION, LEADER, FOLLOWER;
     }
-
+    
     /**
        Should only be non-null when we become leader. When stop being
        leader, it will automaticaly stop itself.
@@ -122,6 +122,11 @@ public class CohortManager
     final private Set<ICohortConnection> cohort_connections =
         new HashSet<ICohortConnection>();
 
+    
+    final protected ReentrantLock leader_listeners_lock = new ReentrantLock();
+    final protected Set<ILeaderElectedListener> leader_listeners =
+        new HashSet<ILeaderElectedListener>();
+    
     /**
        Id of local cohort.
      */
@@ -163,7 +168,7 @@ public class CohortManager
         this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
         this.heartbeat_send_period_ms = heartbeat_send_period_ms;
     }
-
+    
     /**
        Actually start connections to other cohort nodes.
        Should be called before any other methods
@@ -728,6 +733,57 @@ public class CohortManager
         finally
         {
             state_lock.unlock();
+        }
+    }
+
+    /************* Allow subscribing and removing leader listeners */
+    public void add_leader_elected_listener(
+        ILeaderElectedListener leader_elected_listener)
+    {
+        leader_listeners_lock.lock();
+        try
+        {
+            leader_listeners.add(leader_elected_listener);
+        }
+        finally
+        {
+            leader_listeners_lock.unlock();
+        }
+    }
+
+    public void remove_leader_elected_listener(
+        ILeaderElectedListener leader_elected_listener)
+    {
+        leader_listeners_lock.lock();
+        try
+        {
+            leader_listeners.remove(leader_elected_listener);
+        }
+        finally
+        {
+            leader_listeners_lock.unlock();
+        }
+    }
+
+    /**
+       Gets called whenever we get a new leader.  Notifies all
+       listeners of new leader.
+     */
+    public void notify_leader_listeners()
+    {
+        leader_listeners_lock.lock();
+        try
+        {
+            for (ILeaderElectedListener leader_elected_listener :
+                     leader_listeners)
+            {
+                leader_elected_listener.leader_elected(
+                    view_number, current_leader_id, local_cohort_id);
+            }
+        }
+        finally
+        {
+            leader_listeners_lock.unlock();
         }
     }
 }
