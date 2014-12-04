@@ -691,6 +691,9 @@ public class CohortManager
                 heartbeat_sending_service.start();
                 leader_context =
                     new LeaderContext(cohort_connections,log,view_number);
+
+                current_leader_id = local_cohort_id;
+                notify_leader_listeners();
             }
         }
         finally
