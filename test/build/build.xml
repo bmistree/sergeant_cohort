@@ -64,6 +64,16 @@
         </antcall>
     </target>
 
+    <target
+        name="jar_leader_flapping"
+        depends="compile">
+        <antcall target="make_jar">
+          <param name="main_class" value="LeaderFlappingTest"/>
+          <param name="dest_jar" value="leader_flapping.jar"/>
+        </antcall>
+    </target>
+
+    
     
     <!-- Make a jar -->
     <target
