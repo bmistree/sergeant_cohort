@@ -133,22 +133,22 @@ public class CohortManager
     final public long local_cohort_id;
 
     final public int quorum_size;
-    
+
     /**
-       @param connection_info --- Connection information that we
-       should use to connect to remote cohort nodes.
-
-       @param cohort_connection_factory --- Factory to use to generate
-       connections.
-
-       @param local_cohort_id
+       Debugging term: if true, then this node may try to become
+       leader itself.  Otherwise, will never try to become leader on
+       its own.
      */
+    final protected boolean debug_can_be_leader;
+    
     public CohortManager(
         Set<CohortInfo.CohortInfoPair> connection_info,
         ICohortConnectionFactory cohort_connection_factory,
         long local_cohort_id, int heartbeat_timeout_period_ms,
-        int heartbeat_send_period_ms)
+        int heartbeat_send_period_ms, boolean debug_can_be_leader)
     {
+        this.debug_can_be_leader = debug_can_be_leader;
+        
         for (CohortInfo.CohortInfoPair pair : connection_info)
         {
             ICohortConnection connection =
@@ -167,6 +167,27 @@ public class CohortManager
         this.local_cohort_id = local_cohort_id;
         this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
         this.heartbeat_send_period_ms = heartbeat_send_period_ms;
+    }
+    
+    /**
+       @param connection_info --- Connection information that we
+       should use to connect to remote cohort nodes.
+
+       @param cohort_connection_factory --- Factory to use to generate
+       connections.
+
+       @param local_cohort_id
+     */
+    public CohortManager(
+        Set<CohortInfo.CohortInfoPair> connection_info,
+        ICohortConnectionFactory cohort_connection_factory,
+        long local_cohort_id, int heartbeat_timeout_period_ms,
+        int heartbeat_send_period_ms)
+    {
+        this(
+            connection_info, cohort_connection_factory,
+            local_cohort_id, heartbeat_timeout_period_ms,
+            heartbeat_send_period_ms, true);
     }
     
     /**
@@ -282,6 +303,13 @@ public class CohortManager
      */
     private void elect_self_thread(int num_times_called)
     {
+        /**
+           Debugging boolean: if we cannot be leader, then don't
+           nominate self to be leader.
+         */
+        if (! debug_can_be_leader)
+            return;
+        
         ElectionProposal.Builder election_proposal =
             ElectionProposal.newBuilder();
         state_lock.lock();
