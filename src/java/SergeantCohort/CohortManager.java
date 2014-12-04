@@ -369,48 +369,55 @@ public class CohortManager
     /***************** ICohortMessageListener overrides ********/
 
     /**
-       Node on opposite end of cohort_connection has become the leader
-       for given view number.
-
-       Do nothing if view_number in message is less than our current
-       view number (stale message).  Otherwise, elect opposite node
-       our new leader.
+       No longer using new_leader message.
      */
     @Override
     public void new_leader(
         ICohortConnection cohort_connection,NewLeader new_leader)
     {
-        state_lock.lock();
-        try
-        {
-            if (new_leader.getViewNumber() < view_number)
-                return;
-            
-            state = ManagerState.FOLLOWER;
-            heartbeat_sending_service = null;
-            leader_context = null;
-            
-            heartbeat_listening_service =
-                new HeartbeatListeningService(
-                    heartbeat_timeout_period_ms,this,
-                    cohort_connection.remote_cohort_id(),
-                    new_leader.getViewNumber());
-            heartbeat_listening_service.start_service();
-            
-            
-            election_context = null;
-            current_leader_id = cohort_connection.remote_cohort_id();
-            view_number = new_leader.getViewNumber();
-            
-            notify_leader_listeners();
-        }
-        finally
-        {
-            state_lock.unlock();
-        }
+        // FIXME: should eventually get rid of new_leader messages.
     }
 
+    /**
+       Called from within state_lock. when receive an append_entries
+       message.
 
+       @param append_entries_view_number --- The 
+     */
+    protected void check_new_leader(
+        long append_entries_view_number,
+        ICohortConnection cohort_connection)
+    {
+        if (append_entries_view_number < view_number)
+            return;
+
+        // if not already follower, then make self follower.
+        if ((append_entries_view_number == view_number) &&
+            (state == ManagerState.FOLLOWER))
+        {
+            return;
+        }
+        
+        state = ManagerState.FOLLOWER;
+        heartbeat_sending_service = null;
+        leader_context = null;
+
+        heartbeat_listening_service =
+            new HeartbeatListeningService(
+                heartbeat_timeout_period_ms,this,
+                cohort_connection.remote_cohort_id(),
+                append_entries_view_number);
+        heartbeat_listening_service.start_service();
+            
+            
+        election_context = null;
+        current_leader_id = cohort_connection.remote_cohort_id();
+        view_number = append_entries_view_number;
+            
+        notify_leader_listeners();
+    }
+
+    
     /**
        Receive append_entries command.
 
@@ -437,6 +444,9 @@ public class CohortManager
         state_lock.lock();
         try
         {
+            check_new_leader(
+                append_entries.getViewNumber(),cohort_connection);
+            
             // so that do not timeout the connection.
             if (heartbeat_listening_service != null)
                 heartbeat_listening_service.append_entries_message();
@@ -625,13 +635,6 @@ public class CohortManager
             election_proposal_resp.getProposedViewNumber();
         long remote_cohort_id = cohort_connection.remote_cohort_id();
 
-        // if this node becomes a leader as a result of this message,
-        // make this non-null and after release state lock, send
-        // message out.  I believe it is important to send message
-        // outside of state lock because sending message may change
-        // connection state, which means that 
-        CohortMessage.Builder i_am_leader_message = null;
-        
         state_lock.lock();
         try
         {
@@ -644,7 +647,6 @@ public class CohortManager
                 // discard: vote for an old message
                 return;
             }
-
 
             election_context.votes_received_set.add(remote_cohort_id);
 
@@ -663,25 +665,12 @@ public class CohortManager
                 heartbeat_sending_service.start();
                 leader_context =
                     new LeaderContext(cohort_connections,log,view_number);
-                
-                // tell all other nodes that I am now leader
-                NewLeader.Builder new_leader = NewLeader.newBuilder();
-                new_leader.setViewNumber(view_number);
-
-                i_am_leader_message = CohortMessage.newBuilder();
-                i_am_leader_message.setNewLeader(new_leader);
-                notify_leader_listeners();
             }
         }
         finally
         {
             state_lock.unlock();
         }
-
-        // if got elected leader this round, then tell all other nodes
-        // that I am now the leader.
-        if (i_am_leader_message != null)
-            send_message_to_all_connections(i_am_leader_message);
     }
 
 
