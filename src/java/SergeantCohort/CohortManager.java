@@ -302,12 +302,7 @@ public class CohortManager
        time.
      */
     private void elect_self_thread(int num_times_called)
-    {
-        // Debugging boolean: if we cannot be leader, then don't
-        // nominate self to be leader.
-        if (! debug_can_be_leader)
-            return;
-        
+    {        
         ElectionProposal.Builder election_proposal =
             ElectionProposal.newBuilder();
         state_lock.lock();
@@ -338,6 +333,11 @@ public class CohortManager
             state_lock.unlock();
         }
 
+        // Debugging boolean: if we cannot be leader, then don't
+        // nominate self to be leader.
+        if (! debug_can_be_leader)
+            return;
+        
         CohortMessage.Builder cohort_message =
             CohortMessage.newBuilder();
         cohort_message.setElectionProposal(election_proposal);
