@@ -161,5 +161,13 @@ public class LeaderFlappingTest
             if (leader_id == local_cohort_id)
                 ++ total_number_leader_changes;
         }
+
+        @Override
+        public void election_started(
+            long election_view_number, long local_cohort_id)
+        {
+            // nothing to do here: don't care about these
+            // notifications.
+        }
     }
 }
