@@ -322,6 +322,7 @@ public class CohortManager
             // create a new election context, requiring a new set of
             // voter responses.
             election_context = new ElectionContext(local_cohort_id);
+            notify_election_started_listeners(view_number);
             
             // ask all cohorts to vote for me as new leader.
             election_proposal.setNextProposedViewNumber(view_number);
@@ -658,6 +659,7 @@ public class CohortManager
                         // means that we had not previously been in an
                         // electing state.  enter one.
                         election_context = new ElectionContext(cohort_id);
+                        notify_election_started_listeners(view_number);
                     }
                 
                     if (state != ManagerState.ELECTION)
@@ -842,7 +844,7 @@ public class CohortManager
        Gets called whenever we get a new leader.  Notifies all
        listeners of new leader.
      */
-    public void notify_leader_listeners()
+    protected void notify_leader_listeners()
     {
         leader_listeners_lock.lock();
         try
@@ -852,6 +854,27 @@ public class CohortManager
             {
                 leader_elected_listener.leader_elected(
                     view_number, current_leader_id, local_cohort_id);
+            }
+        }
+        finally
+        {
+            leader_listeners_lock.unlock();
+        }
+    }
+
+    /**
+       Gets called wehenver we begin a new election on this node.
+     */
+    protected void notify_election_started_listeners(long election_view_number)
+    {
+        leader_listeners_lock.lock();
+        try
+        {
+            for (ILeaderElectedListener leader_elected_listener :
+                     leader_listeners)
+            {
+                leader_elected_listener.election_started(
+                    election_view_number,local_cohort_id);
             }
         }
         finally
