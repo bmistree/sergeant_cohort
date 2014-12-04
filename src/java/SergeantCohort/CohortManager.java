@@ -442,6 +442,9 @@ public class CohortManager
         heartbeat_sending_service = null;
         leader_context = null;
 
+        if (heartbeat_listening_service != null)
+            heartbeat_listening_service.stop_service();
+        
         heartbeat_listening_service =
             new HeartbeatListeningService(
                 heartbeat_timeout_period_ms,this,
@@ -449,11 +452,9 @@ public class CohortManager
                 remote_view_number);
         heartbeat_listening_service.start_service();
             
-            
         election_context = null;
         current_leader_id = new_leader_id;
         view_number = remote_view_number;
-
 
         if (new_leader_id != UNKNOWN_LEADER_ID)
             notify_leader_listeners();
