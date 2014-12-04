@@ -135,10 +135,14 @@ public class LeaderFlappingTest
         }
 
         // print number of leader changes that occurred.
-        System.out.println("\n\n");
         System.out.println(
+            "\n\nNum leader changes: " + 
             leader_elected_listener.total_number_leader_changes);
         System.out.println("\n\n");
+
+        // 10 is a kind of arbitrary number here.
+        if (leader_elected_listener.total_number_leader_changes < 10)
+            return false;
         
         return true;
     }
@@ -154,12 +158,8 @@ public class LeaderFlappingTest
         public void leader_elected(
             long view_number, long leader_id, long local_cohort_id)
         {
-            System.out.println(
-                "\nGot a leader elected; leader id: " +
-                leader_id + "; local_id: " + local_cohort_id +"\n");
             if (leader_id == local_cohort_id)
                 ++ total_number_leader_changes;
         }
     }
-    
 }
