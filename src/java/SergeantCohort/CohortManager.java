@@ -420,10 +420,12 @@ public class CohortManager
         if (remote_view_number < view_number)
             return;
 
+
+        boolean transition_to_follower = true;
         // if not already follower, then make self follower.
         if (remote_view_number == view_number)
-            
         {
+            // if learn id of new leader, notify all listeners.
             if (state == ManagerState.FOLLOWER)
             {
                 if ((current_leader_id == UNKNOWN_LEADER_ID) &&
@@ -432,33 +434,47 @@ public class CohortManager
                     current_leader_id = new_leader_id;
                     notify_leader_listeners();
                 }
+                // we're already a follower for this view number, do
+                // not need to perform transition
+                transition_to_follower = false;
             }
-            return;
+            else if (state == ManagerState.LEADER)
+            {
+                // we are the leader, do not transition.
+                transition_to_follower = false;
+            }
+        }
+        else
+        {
+            // means that the received view number is greater than our
+            // current one.  Should definitely transition into a
+            // follower state.
+            transition_to_follower = true;
         }
 
-        // only other case is that remote view_number is greater than
-        // our current view number.
-        
-        state = ManagerState.FOLLOWER;
-        heartbeat_sending_service = null;
-        leader_context = null;
+        if (transition_to_follower)
+        {
+            state = ManagerState.FOLLOWER;
+            heartbeat_sending_service = null;
+            leader_context = null;
 
-        if (heartbeat_listening_service != null)
-            heartbeat_listening_service.stop_service();
+            if (heartbeat_listening_service != null)
+                heartbeat_listening_service.stop_service();
         
-        heartbeat_listening_service =
-            new HeartbeatListeningService(
-                heartbeat_timeout_period_ms,this,
-                new_leader_id,
-                remote_view_number);
-        heartbeat_listening_service.start_service();
+            heartbeat_listening_service =
+                new HeartbeatListeningService(
+                    heartbeat_timeout_period_ms,this,
+                    new_leader_id,
+                    remote_view_number);
+            heartbeat_listening_service.start_service();
             
-        election_context = null;
-        current_leader_id = new_leader_id;
-        view_number = remote_view_number;
-
-        if (new_leader_id != UNKNOWN_LEADER_ID)
-            notify_leader_listeners();
+            election_context = null;
+            current_leader_id = new_leader_id;
+            view_number = remote_view_number;
+            
+            if (new_leader_id != UNKNOWN_LEADER_ID)
+                notify_leader_listeners();
+        }
     }
 
     
@@ -491,7 +507,6 @@ public class CohortManager
             check_new_leader(
                 append_entries.getViewNumber(),
                 cohort_connection.remote_cohort_id());
-            
             
             current_view_number = view_number;
             if (current_view_number > append_entries.getViewNumber())
@@ -552,7 +567,6 @@ public class CohortManager
             if (append_entries_resp_view_num < view_number)
                 return;
 
-            
             to_send_back =
                 leader_context.handle_append_entries_response(
                     append_entries_response, local_cohort_id,
