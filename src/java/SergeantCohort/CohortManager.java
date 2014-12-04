@@ -401,9 +401,8 @@ public class CohortManager
             election_context = null;
             current_leader_id = cohort_connection.remote_cohort_id();
             view_number = new_leader.getViewNumber();
-                                              
-            // FIXME: should we notify anyone that we'll receive
-            // messages again (or forward them on)???
+            
+            notify_leader_listeners();
         }
         finally
         {
@@ -671,6 +670,7 @@ public class CohortManager
 
                 i_am_leader_message = CohortMessage.newBuilder();
                 i_am_leader_message.setNewLeader(new_leader);
+                notify_leader_listeners();
             }
         }
         finally
