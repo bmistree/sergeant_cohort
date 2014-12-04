@@ -423,14 +423,17 @@ public class CohortManager
             return;
 
         // if not already follower, then make self follower.
-        if ((remote_view_number == view_number) &&
-            (state == ManagerState.FOLLOWER))
+        if (remote_view_number == view_number)
+            
         {
-            if ((current_leader_id == UNKNOWN_LEADER_ID) &&
-                (new_leader_id != UNKNOWN_LEADER_ID))
+            if (state == ManagerState.FOLLOWER)
             {
-                current_leader_id = new_leader_id;
-                notify_leader_listeners();
+                if ((current_leader_id == UNKNOWN_LEADER_ID) &&
+                    (new_leader_id != UNKNOWN_LEADER_ID))
+                {
+                    current_leader_id = new_leader_id;
+                    notify_leader_listeners();
+                }
             }
             return;
         }
@@ -496,6 +499,7 @@ public class CohortManager
                 heartbeat_listening_service.append_entries_message();
             
             current_view_number = view_number;
+
             
             if (current_view_number > append_entries.getViewNumber())
             {
