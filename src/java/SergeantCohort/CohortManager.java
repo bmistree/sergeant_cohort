@@ -318,15 +318,13 @@ public class CohortManager
             // increment ballot so that know will be sending out
             // election requests for a new, unique ballot number.
             view_number += 1;
-            long proposed_view_number = view_number + 1;
 
             // create a new election context, requiring a new set of
             // voter responses.
-            election_context =
-                new ElectionContext(local_cohort_id,proposed_view_number);
+            election_context = new ElectionContext(local_cohort_id);
             
             // ask all cohorts to vote for me as new leader.
-            election_proposal.setNextProposedViewNumber(proposed_view_number);
+            election_proposal.setNextProposedViewNumber(view_number);
             election_proposal.setNodeId(local_cohort_id);
             election_proposal.setLastLogIndex(last_log_index);
             election_proposal.setLastLogTerm(last_log_term);            
@@ -602,32 +600,40 @@ public class CohortManager
         state_lock.lock();
         try
         {
-            if (proposed_view_number <= view_number)
+            if (proposed_view_number < view_number)
             {
                 // wrong view number: do not vote for this candidate
                 vote_granted = false;
             }
-            else
+            else if (view_number == proposed_view_number)
             {
-                if ((election_context != null) &&
-                    (election_context.voting_for_cohort_id != cohort_id) &&
-                    (proposed_view_number == election_context.election_view_number))
+                // if same view number, only way that we vote for
+                // other person is if we already voted for them (ie.,
+                // we already voted for them or they're leader).
+
+                if (state == ManagerState.FOLLOWER)
                 {
-                    // already voted during this term for another
-                    // candidate: do not vote for the sender of this message.
-                    vote_granted = false;
+                    if (current_leader_id == cohort_id)
+                        vote_granted = true;
                 }
-                else if ((election_proposal.getLastLogIndex() < last_log_index) ||
-                         (election_proposal.getLastLogTerm() < last_log_term))
+                        
+                // check if have already voted for another in this term.
+                if ((election_context != null) && 
+                    (election_context.voting_for_cohort_id == cohort_id))
                 {
-                    // candidate's log isn't as up to date as mine: do
-                    // not vote for this candidate.
-                    vote_granted = false;
+                    vote_granted = true;
                 }
-                else
+            }
+            else // proposed view number > current view number
+            {
+                // check if candidate's log is at least as up to date
+                // as our log.
+                if ((election_proposal.getLastLogIndex() >= last_log_index) &&
+                    (election_proposal.getLastLogTerm() >= last_log_term))
                 {
                     // vote for this candidate.
                     vote_granted = true;
+                
                     // this way, if we need to retrigger voting while
                     // we're in the election stage, we will start with
                     // view numbers at least as large as the one
@@ -637,10 +643,9 @@ public class CohortManager
                     {
                         // means that we had not previously been in an
                         // electing state.  enter one.
-                        election_context =
-                            new ElectionContext(cohort_id,proposed_view_number);
+                        election_context = new ElectionContext(cohort_id);
                     }
-
+                
                     if (state != ManagerState.ELECTION)
                     {
                         current_leader_id = null;
@@ -655,10 +660,9 @@ public class CohortManager
                         start_elect_self_thread(
                             MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT);
                     }
-                    
-                    // FIXME: may need to stop being leader/notify
-                    // others that I am no longer leader.
                 }
+                // FIXME: may need to stop being leader/notify
+                // others that I am no longer leader.
             }
         }
         finally
@@ -704,7 +708,7 @@ public class CohortManager
             if (election_context == null)
                 return;
             
-            if ((view_number + 1) != proposed_view_number)
+            if (view_number != proposed_view_number)
             {
                 // discard: vote for an old message
                 return;
