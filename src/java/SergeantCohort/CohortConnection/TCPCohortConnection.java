@@ -112,7 +112,6 @@ public class TCPCohortConnection
 
         while (true)
         {
-            socket_lock.lock();
             ServerSocket server_socket = null;
             try
             {
@@ -120,9 +119,12 @@ public class TCPCohortConnection
                 
                 try
                 {
-                    socket = server_socket.accept();
+                    Socket new_socket = server_socket.accept();
                     server_socket.close();
-                    
+
+                    socket_lock.lock();
+                    socket = new_socket;
+                    socket_lock.unlock();
                     // socket is up and connection has been made.
                     // notify any listeners.
                     state_lock.lock();
@@ -139,10 +141,6 @@ public class TCPCohortConnection
             catch (IOException ex)
             {
                 // EMPTY: just wait some time and retry.
-            }
-            finally
-            {
-                socket_lock.unlock();
             }
 
             // wait some time before trying to connect again.
