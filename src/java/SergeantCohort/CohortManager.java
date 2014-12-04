@@ -492,17 +492,17 @@ public class CohortManager
                 append_entries.getViewNumber(),
                 cohort_connection.remote_cohort_id());
             
-            // so that do not timeout the connection.
-            if (heartbeat_listening_service != null)
-                heartbeat_listening_service.append_entries_message();
             
             current_view_number = view_number;
-
-            
             if (current_view_number > append_entries.getViewNumber())
             {
                 success = false;
                 return;
+            }
+            else if(current_view_number == append_entries.getViewNumber())
+            {
+                if (heartbeat_listening_service != null)
+                    heartbeat_listening_service.append_entries_message();
             }
 
             success = log.handle_append_entries(append_entries);
