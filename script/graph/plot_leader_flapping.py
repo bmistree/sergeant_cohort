@@ -137,8 +137,10 @@ class SingleNodeHistory(object):
 
             if begin_element.state == States.ELECTION:
                 line_height = election_height
+                color = 'red'
             elif begin_element.state == States.FOLLOWER:
                 line_height = follower_height
+                color = 'black'
             else:
                 print (
                     '\nShould only use this method for ' +
@@ -206,17 +208,21 @@ def run(input_json_filename,output_filename):
 
 
     # draw graph just for the single follower
-    all_data[0].plot_follower_election_only(axes, .2,.8)
+    election_height = .2
+    follower_height = .8
+    
+    all_data[0].plot_follower_election_only(
+        axes, election_height,follower_height)
 
-        
-    # # Plot all line styles.
-    # figure, axes = plt.subplots()
-    # for y, linestyle in enumerate(linestyles):
-    #     ax.text(-0.5, y, nice_repr(linestyle), **text_style)
-    #     ax.plot(y * points, linestyle=linestyle, color=color, linewidth=3)
-    #     format_axes(ax)
-    #     ax.set_title('line styles')
+    label_offset = .02
+    label_x = .1
+    axes.annotate('State: Election', xy=(label_x,election_height+label_offset))
+    axes.annotate('State: Follower', xy=(label_x,follower_height+label_offset))
+    axes.set_title('State of fully-connected node')
+    
 
+    axes.set_xticks([])
+    axes.set_yticks([])
     # plt.show()
     plt.savefig(output_filename)
 
