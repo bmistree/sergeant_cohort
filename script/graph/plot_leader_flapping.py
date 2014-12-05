@@ -15,6 +15,12 @@ class Colors(object):
     LEADER = 'red'
     ELECTION = 'green'
     FOLLOWER = 'blue'
+
+class States(object):
+    LEADER = 0
+    ELECTION = 1
+    FOLLOWER = 2
+    
     
 class HistoryElement(object):
     def __init__(self,node_id,timestamp,leader_id):
@@ -23,12 +29,15 @@ class HistoryElement(object):
         if leader_id == -1:
             self.linestyle = LineStyles.ELECTION
             self.color = Colors.ELECTION
+            self.state = States.ELECTION
         elif leader_id == node_id:
             self.linestyle = LineStyles.LEADER
             self.color = Colors.LEADER
+            self.state = States.LEADER
         else:
             self.linestyle = LineStyles.FOLLOWER
             self.color = Colors.FOLLOWER
+            self.state = States.FOLLOWER
 
     def remove_timestamp_offset(self,offset):
         '''
@@ -110,7 +119,42 @@ class SingleNodeHistory(object):
                 ax,start_point_x,line_height,end_point_x,line_height,style,
                 color)
                       
+    def plot_follower_election_only(self,ax, election_height, follower_height):
+        '''
+        Should be used on node that can never be leader.
+        '''
+        style = '-'
+        color = 'cornflowerblue'
+        
+        # draw in election cycle to start
+        draw_line(
+            ax,0,election_height,self.history[0].timestamp,election_height,
+            style,color)
 
+        for i in range(1,len(self.history)):
+            begin_element = self.history[i-1]
+            start_point_x = begin_element.timestamp
+
+            if begin_element.state == States.ELECTION:
+                line_height = election_height
+            elif begin_element.state == States.FOLLOWER:
+                line_height = follower_height
+            else:
+                print (
+                    '\nShould only use this method for ' +
+                    'non-leader node')
+                assert False
+
+            
+            end_element = self.history[i]
+            end_point_x = end_element.timestamp
+
+            draw_line(
+                ax,start_point_x,line_height,end_point_x,line_height,style,
+                color)
+        
+        
+            
         
 def draw_line(ax,start_point_x, start_point_y, end_point_x, end_point_y,style,color):
     '''
@@ -153,11 +197,16 @@ def run(input_json_filename,output_filename):
         
     # now actually draw graphs
     figure, axes = plt.subplots()
-    for i in range(0,len(all_data)):
-        line_height = float(i)/float(len(all_data)) + .2
-        single_node_history = all_data[i]
-        single_node_history.plot_history(axes,line_height)
-        
+
+    # draw state of all nodes
+    # for i in range(0,len(all_data)):
+    #     line_height = float(i)/float(len(all_data)) + .2
+    #     single_node_history = all_data[i]
+    #     single_node_history.plot_history(axes,line_height)
+
+
+    # draw graph just for the single follower
+    all_data[0].plot_follower_election_only(axes, .2,.8)
     plt.show()
         
 
