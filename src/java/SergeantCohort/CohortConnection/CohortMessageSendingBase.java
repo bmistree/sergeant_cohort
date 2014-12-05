@@ -42,10 +42,6 @@ public abstract class CohortMessageSendingBase
                 msg_listener.election_proposal_response(
                     this,msg.getElectionProposalResponse());
             }
-            else if (msg.hasNewLeader())
-            {
-                msg_listener.new_leader(this,msg.getNewLeader());
-            }
             //// DEBUG
             else
             {

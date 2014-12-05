@@ -11,7 +11,6 @@ import ProtocolLibs.AppendEntriesProto.AppendEntries;
 import ProtocolLibs.AppendEntriesResponseProto.AppendEntriesResponse;
 import ProtocolLibs.ElectionProposalProto.ElectionProposal;
 import ProtocolLibs.ElectionProposalResponseProto.ElectionProposalResponse;
-import ProtocolLibs.NewLeaderProto.NewLeader;
 
 import SergeantCohort.CohortConnection.ICohortConnectionFactory;
 import SergeantCohort.CohortConnection.ICohortConnection;
@@ -395,16 +394,6 @@ public class CohortManager
 
 
     /***************** ICohortMessageListener overrides ********/
-
-    /**
-       No longer using new_leader message.
-     */
-    @Override
-    public void new_leader(
-        ICohortConnection cohort_connection,NewLeader new_leader)
-    {
-        // FIXME: should eventually get rid of new_leader messages.
-    }
 
     /**
        Called from within state_lock. when receive an append_entries
