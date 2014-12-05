@@ -62,6 +62,12 @@ class SingleNodeHistory(object):
         '''
         return self.history[0].timestamp
 
+    def max_timestamp(self):
+        '''
+        Returns the maximum timestamp of all history elements.
+        '''
+        return self.history[-1].timestamp
+    
     def remove_timestamp_offset(self,offset):
         for history_element in self.history:
             history_element.remove_timestamp_offset(offset)
@@ -74,11 +80,28 @@ def run(input_json_filename,output_filename):
 
     with open(input_json_filename) as fd:
         json_data = json.load(fd)
-        for single_node_json_data in json_data:
+        for single_node_json_data in json_data:            
             all_data.append(SingleNodeHistory(single_node_json_data))
         
-    
-    
+    # remove timestamp offset so all times start ~ 0
+    min_timestamp = None
+    max_timestamp = None
+    for single_node_history in all_data:
+        if min_timestamp is None:
+            min_timestamp = single_node_history.min_timestamp()
+            max_timestamp = single_node_history.max_timestamp()
+        else:
+            min_timestamp = min(
+                min_timestamp,single_node_history.min_timestamp())
+            max_timestamp = max(
+                max_timestamp,single_node_history.max_timestamp())
+
+    max_timestamp -= min_timestamp
+    for single_node_history in all_data:
+        single_node_history.remove_timestamp_offset(min_timestamp)
+
+
+        
     # # Plot all line styles.
     # figure, axes = plt.subplots()
     # for y, linestyle in enumerate(linestyles):
