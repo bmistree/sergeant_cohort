@@ -33,15 +33,6 @@ public class CohortManager
     public final static long BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS = 100L;
     
     /**
-       If we transition into election state, by receiving a message
-       from another node, wait this long before trying to elect
-       ourself.  Handles case where cohort solicits votes (plunging
-       everyone into election), and then crashes before becoming
-       leader.
-     */
-    public final static long MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT = 300L;
-
-    /**
        If we do not receive a heartbeat message in this period of ms,
        then we determine that the connection is dead and notify
        connection listeners.
@@ -61,7 +52,7 @@ public class CohortManager
     {
         ELECTION, LEADER, FOLLOWER;
     }
-    
+
     /**
        Should only be non-null when we become leader. When stop being
        leader, it will automaticaly stop itself.
@@ -124,7 +115,6 @@ public class CohortManager
     final private Set<ICohortConnection> cohort_connections =
         new HashSet<ICohortConnection>();
 
-    
     final protected ReentrantLock leader_listeners_lock = new ReentrantLock();
     final protected Set<ILeaderElectedListener> leader_listeners =
         new HashSet<ILeaderElectedListener>();
@@ -657,13 +647,13 @@ public class CohortManager
                         state = ManagerState.ELECTION;
                         heartbeat_sending_service = null;
                         leader_context = null;
+                        
                         // calling this here handles the case that the
                         // election sender fails: if we aren't in a
                         // stable state after
-                        // MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT, then
-                        // we will try to elect ourself.
-                        start_elect_self_thread(
-                            MS_TO_WAIT_BEFORE_STARTING_SELF_ELECT);
+                        // heartbeat_timeout_period_ms, then we will
+                        // try to elect ourself.
+                        start_elect_self_thread(heartbeat_timeout_period_ms);
                     }
                 }
                 // FIXME: may need to stop being leader/notify
