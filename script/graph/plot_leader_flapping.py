@@ -4,12 +4,17 @@ import sys
 import json
 
 import matplotlib.pyplot as plt
+import matplotlib.lines as lines
 
 class LineStyles(object):
     LEADER = '-'
     ELECTION = ':'
     FOLLOWER = '--'
 
+class Colors(object):
+    LEADER = 'red'
+    ELECTION = 'green'
+    FOLLOWER = 'blue'
     
 class HistoryElement(object):
     def __init__(self,node_id,timestamp,leader_id):
@@ -17,10 +22,13 @@ class HistoryElement(object):
 
         if leader_id == -1:
             self.linestyle = LineStyles.ELECTION
+            self.color = Colors.ELECTION
         elif leader_id == node_id:
             self.linestyle = LineStyles.LEADER
+            self.color = Colors.LEADER
         else:
             self.linestyle = LineStyles.FOLLOWER
+            self.color = Colors.FOLLOWER
 
     def remove_timestamp_offset(self,offset):
         '''
@@ -28,6 +36,9 @@ class HistoryElement(object):
         '''
         self.timestamp -= offset
 
+    def normalize_timestamp(self,max_timestamp):
+        self.timestamp = float(self.timestamp)/float(max_timestamp)
+        
         
 class SingleNodeHistory(object):
     def __init__(self,node_history_dict):
@@ -67,12 +78,51 @@ class SingleNodeHistory(object):
         Returns the maximum timestamp of all history elements.
         '''
         return self.history[-1].timestamp
+
+    def normalize_timestamps(self,max_timestamp):
+        for history_element in self.history:
+            history_element.normalize_timestamp(max_timestamp)
     
     def remove_timestamp_offset(self,offset):
         for history_element in self.history:
             history_element.remove_timestamp_offset(offset)
 
-    
+    def plot_history(self,ax,line_height):
+        '''
+        @param {matplotlib axes} ax
+        @param {float} line_height --- 0 to 1.0
+        '''
+        # draw in election cycle to start
+        draw_line(
+            ax,0,line_height,self.history[0].timestamp,line_height,
+            LineStyles.ELECTION,Colors.ELECTION)
+
+        for i in range(1,len(self.history)):
+            begin_element = self.history[i-1]
+            start_point_x = begin_element.timestamp
+            style = begin_element.linestyle
+            color = begin_element.color
+            
+            end_element = self.history[i]
+            end_point_x = end_element.timestamp
+            
+            draw_line(
+                ax,start_point_x,line_height,end_point_x,line_height,style,
+                color)
+                      
+
+        
+def draw_line(ax,start_point_x, start_point_y, end_point_x, end_point_y,style,color):
+    '''
+    x and y points range from 0 to 1
+    '''
+    line = [(start_point_x,start_point_y), (end_point_x,end_point_y)]
+    (line_xs, line_ys) = zip(*line)
+    ax.add_line(
+        lines.Line2D(
+            line_xs, line_ys, linewidth=4, color=color,
+            linestyle=style))
+
     
 def run(input_json_filename,output_filename):
 
@@ -99,7 +149,17 @@ def run(input_json_filename,output_filename):
     max_timestamp -= min_timestamp
     for single_node_history in all_data:
         single_node_history.remove_timestamp_offset(min_timestamp)
-
+        single_node_history.normalize_timestamps(max_timestamp)
+        
+    # now actually draw graphs
+    figure, axes = plt.subplots()
+    for i in range(0,len(all_data)):
+        line_height = float(i)/float(len(all_data)) + .2
+        single_node_history = all_data[i]
+        single_node_history.plot_history(axes,line_height)
+        
+    plt.show()
+        
 
         
     # # Plot all line styles.
