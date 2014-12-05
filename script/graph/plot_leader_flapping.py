@@ -207,8 +207,6 @@ def run(input_json_filename,output_filename):
 
     # draw graph just for the single follower
     all_data[0].plot_follower_election_only(axes, .2,.8)
-    plt.show()
-        
 
         
     # # Plot all line styles.
@@ -220,7 +218,7 @@ def run(input_json_filename,output_filename):
     #     ax.set_title('line styles')
 
     # plt.show()
-    
+    plt.savefig(output_filename)
 
 
 if __name__ == '__main__':
