@@ -158,7 +158,8 @@ class SingleNodeHistory(object):
         
             
         
-def draw_line(ax,start_point_x, start_point_y, end_point_x, end_point_y,style,color):
+def draw_line(ax,start_point_x, start_point_y, end_point_x, end_point_y,
+              style,color):
     '''
     x and y points range from 0 to 1
     '''
@@ -168,6 +169,53 @@ def draw_line(ax,start_point_x, start_point_y, end_point_x, end_point_y,style,co
         lines.Line2D(
             line_xs, line_ys, linewidth=4, color=color,
             linestyle=style))
+
+    
+def draw_follower_election_only(follower_election_only, output_filename):
+    '''
+    @param {SingleNodeHistory} follower_election_only
+    @param {string} output_filename
+    '''
+    # now actually draw graphs
+    figure, axes = plt.subplots()
+
+    figure.set_figheight(1.3)
+    figure.set_figwidth(3)
+    figure.subplots_adjust(top=.80,bottom=.05,left=.02,right=.98)
+
+    election_height = .2
+    follower_height = .65
+    
+    follower_election_only.plot_follower_election_only(
+        axes, election_height,follower_height)
+
+    label_offset = .08
+    label_x = .05
+    axes.annotate(
+        'State: Election', xy=(label_x,election_height+label_offset))
+    axes.annotate(
+        'State: Follower', xy=(label_x,follower_height+label_offset))
+    axes.set_title('State of fully-connected node')
+    
+    axes.set_xticks([])
+    axes.set_yticks([])
+    # plt.show()
+    plt.savefig(output_filename)
+
+
+def draw_all_history_states(all_data,output_filename):
+    '''
+    @param {list} all_data --- Each element is a SingleNodeHistory object
+    @param {string} output_filename --- Name of file to save.
+    '''
+    figure, axes = plt.subplots()
+    for i in range(0,len(all_data)):
+        line_height = float(i)/float(len(all_data)) + .2
+        single_node_history = all_data[i]
+        single_node_history.plot_history(axes,line_height)
+    
+    # plt.show()
+    plt.savefig(output_filename)
 
     
 def run(input_json_filename,output_filename):
@@ -198,33 +246,10 @@ def run(input_json_filename,output_filename):
         single_node_history.normalize_timestamps(max_timestamp)
         
     # now actually draw graphs
-    figure, axes = plt.subplots()
-
-    # draw state of all nodes
-    # for i in range(0,len(all_data)):
-    #     line_height = float(i)/float(len(all_data)) + .2
-    #     single_node_history = all_data[i]
-    #     single_node_history.plot_history(axes,line_height)
-
+    # draw_all_history_states(all_data,output_filename)
 
     # draw graph just for the single follower
-    election_height = .2
-    follower_height = .8
-    
-    all_data[0].plot_follower_election_only(
-        axes, election_height,follower_height)
-
-    label_offset = .02
-    label_x = .1
-    axes.annotate('State: Election', xy=(label_x,election_height+label_offset))
-    axes.annotate('State: Follower', xy=(label_x,follower_height+label_offset))
-    axes.set_title('State of fully-connected node')
-    
-
-    axes.set_xticks([])
-    axes.set_yticks([])
-    # plt.show()
-    plt.savefig(output_filename)
+    draw_follower_election_only(all_data[0], output_filename)
 
 
 if __name__ == '__main__':
