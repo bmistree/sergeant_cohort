@@ -8,5 +8,6 @@ public interface ILeaderElectedListener
     /**
        Gets called whenever enter election state.
      */
-    public void election_started(long election_view_number, long local_cohort_id);
+    public void election_started(
+        long election_view_number, long local_cohort_id);
 }
