@@ -426,7 +426,6 @@ public class CohortManager
                 if (heartbeat_listening_service != null)
                     heartbeat_listening_service.append_entries_message();
             }
-
             success = log.handle_append_entries(append_entries);
         }
         finally
@@ -460,12 +459,9 @@ public class CohortManager
         state_lock.lock();
         try
         {
-            boolean transitioned_to_follower =
-                check_become_follower(
-                    UNKNOWN_LEADER_ID,append_entries_resp_view_num,false);
-            if (transitioned_to_follower)
-                return;
-
+            check_become_follower(
+                UNKNOWN_LEADER_ID,append_entries_resp_view_num,false);
+            
             // if message failed because other side was on future view
             // number, then we will no logner be leader and below will
             // be false. ignore message if we are no longer the leader
@@ -481,7 +477,6 @@ public class CohortManager
                 leader_context.handle_append_entries_response(
                     append_entries_response, local_cohort_id,
                     view_number, cohort_connection.remote_cohort_id());
-
         }
         finally
         {
