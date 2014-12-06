@@ -34,9 +34,13 @@ public class Log
 
     protected Set<IApplyEntryListener> apply_entry_listener_set =
         new HashSet<IApplyEntryListener>();
+
+    protected long local_cohort_id;
     
-    public Log()
+    public Log(long local_cohort_id)
     {
+        this.local_cohort_id = local_cohort_id;
+        
         // add an empty log entry so that don't have to special-case
         // having an empty log.  Note that commit_index, etc starts
         // appropriately.
@@ -101,6 +105,7 @@ public class Log
     public synchronized boolean handle_append_entries(
         AppendEntries append_entries)
     {
+        long nonce = append_entries.getNonce();
         long msg_term = append_entries.getViewNumber();
         long leader_commit_index = append_entries.getLeaderCommitIndex();
         
@@ -109,7 +114,13 @@ public class Log
         // whose term matches prevLogTerm
         long msg_prev_log_index = append_entries.getPrevLogIndex();
         if (msg_prev_log_index > (log.size() - 1))
+        {
+            System.out.println(
+                "On node " + local_cohort_id +
+                ", returning false for nonce " +
+                nonce + " because leader's prev log index is greater.");
             return false;
+        }
         
         // If an existing entry conflicts with a new one (same index
         // but different terms), delete the existing entry and all that

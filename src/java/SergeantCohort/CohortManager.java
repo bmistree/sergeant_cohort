@@ -46,7 +46,7 @@ public class CohortManager
     
     protected final static Random rand = new Random();
 
-    protected final Log log = new Log();
+    protected final Log log;
     
     protected enum ManagerState
     {
@@ -139,6 +139,8 @@ public class CohortManager
         long local_cohort_id, int heartbeat_timeout_period_ms,
         int heartbeat_send_period_ms, boolean debug_can_be_leader)
     {
+        log = new Log(local_cohort_id);
+        
         this.debug_can_be_leader = debug_can_be_leader;
         
         for (CohortInfo.CohortInfoPair pair : connection_info)
@@ -414,11 +416,15 @@ public class CohortManager
         {
             check_become_follower(
                 remote_cohort_id,received_view_number,true);
-            
+
             current_view_number = view_number;
             if (current_view_number > received_view_number)
             {
                 success = false;
+                System.out.println(
+                    "On node " + local_cohort_id +
+                    ", returning false for nonce " +
+                    nonce + " because we have a larger view number.");
                 return;
             }
             else if(current_view_number == received_view_number)
@@ -613,6 +619,7 @@ public class CohortManager
             // nothing to do.
             if (! vote_granted)
                 return;
+
             
             // discard: had already transitioned into new state
             if (election_context == null)
@@ -791,7 +798,6 @@ public class CohortManager
                 current_leader_id = new_leader_id;
                 notify = true;
             }
-            transition = true;
         }
 
         if (view_number < received_view_number)
