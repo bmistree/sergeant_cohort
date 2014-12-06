@@ -384,80 +384,6 @@ public class CohortManager
 
 
     /***************** ICohortMessageListener overrides ********/
-
-    /**
-       Called from within state_lock. when receive an append_entries
-       message.
-
-       @param append_entries_view_number --- The
-
-       @param new_leader_id --- Can be special UNKNOWN_LEADER_ID if
-       don't know who new leader is.
-     */
-    protected void check_new_leader(
-        long remote_view_number,long new_leader_id)
-    {
-        if (remote_view_number < view_number)
-            return;
-
-
-        boolean transition_to_follower = true;
-        // if not already follower, then make self follower.
-        if (remote_view_number == view_number)
-        {
-            // if learn id of new leader, notify all listeners.
-            if (state == ManagerState.FOLLOWER)
-            {
-                if ((current_leader_id == UNKNOWN_LEADER_ID) &&
-                    (new_leader_id != UNKNOWN_LEADER_ID))
-                {
-                    current_leader_id = new_leader_id;
-                    notify_leader_listeners();
-                }
-                // we're already a follower for this view number, do
-                // not need to perform transition
-                transition_to_follower = false;
-            }
-            else if (state == ManagerState.LEADER)
-            {
-                // we are the leader, do not transition.
-                transition_to_follower = false;
-            }
-        }
-        else
-        {
-            // means that the received view number is greater than our
-            // current one.  Should definitely transition into a
-            // follower state.
-            transition_to_follower = true;
-        }
-
-        if (transition_to_follower)
-        {
-            state = ManagerState.FOLLOWER;
-            heartbeat_sending_service = null;
-            leader_context = null;
-
-            if (heartbeat_listening_service != null)
-                heartbeat_listening_service.stop_service();
-        
-            heartbeat_listening_service =
-                new HeartbeatListeningService(
-                    heartbeat_timeout_period_ms,this,
-                    new_leader_id,
-                    remote_view_number);
-            heartbeat_listening_service.start_service();
-            
-            election_context = null;
-            current_leader_id = new_leader_id;
-            view_number = remote_view_number;
-            
-            if (new_leader_id != UNKNOWN_LEADER_ID)
-                notify_leader_listeners();
-        }
-    }
-
-    
     /**
        Receive append_entries command.
 
@@ -479,22 +405,23 @@ public class CohortManager
     {
         boolean success = false;
         long nonce = append_entries.getNonce();
+        long remote_cohort_id = cohort_connection.remote_cohort_id();
+        long received_view_number = append_entries.getViewNumber();
         long current_view_number = 0;
 
         state_lock.lock();
         try
         {
-            check_new_leader(
-                append_entries.getViewNumber(),
-                cohort_connection.remote_cohort_id());
+            check_become_follower(
+                remote_cohort_id,received_view_number,true);
             
             current_view_number = view_number;
-            if (current_view_number > append_entries.getViewNumber())
+            if (current_view_number > received_view_number)
             {
                 success = false;
                 return;
             }
-            else if(current_view_number == append_entries.getViewNumber())
+            else if(current_view_number == received_view_number)
             {
                 if (heartbeat_listening_service != null)
                     heartbeat_listening_service.append_entries_message();
@@ -533,8 +460,11 @@ public class CohortManager
         state_lock.lock();
         try
         {
-            check_new_leader(
-                append_entries_resp_view_num, UNKNOWN_LEADER_ID);
+            boolean transitioned_to_follower =
+                check_become_follower(
+                    UNKNOWN_LEADER_ID,append_entries_resp_view_num,false);
+            if (transitioned_to_follower)
+                return;
 
             // if message failed because other side was on future view
             // number, then we will no logner be leader and below will
@@ -589,11 +519,15 @@ public class CohortManager
         long proposed_view_number =
             election_proposal.getNextProposedViewNumber();
         boolean vote_granted = false;
-        long cohort_id = cohort_connection.remote_cohort_id();
-        
+        long remote_cohort_id = cohort_connection.remote_cohort_id();
+
         state_lock.lock();
         try
         {
+            boolean transitioned_to_follower =
+                check_become_follower(
+                    remote_cohort_id,proposed_view_number,false);
+            
             if (proposed_view_number < view_number)
             {
                 // wrong view number: do not vote for this candidate
@@ -604,22 +538,28 @@ public class CohortManager
                 // if same view number, only way that we vote for
                 // other person is if we already voted for them (ie.,
                 // we already voted for them or they're leader).
-
                 if (state == ManagerState.FOLLOWER)
                 {
-                    if (current_leader_id == cohort_id)
+                    if (current_leader_id == remote_cohort_id)
                         vote_granted = true;
                 }
-                        
-                // check if have already voted for another in this term.
-                if ((election_context != null) && 
-                    (election_context.voting_for_cohort_id == cohort_id))
-                {
-                    vote_granted = true;
-                }
             }
+            //// DEBUG: Should never get to this point because
+            //// check_become_follower should already have updated
+            //// view_number
             else // proposed view number > current view number
             {
+                Util.force_assert("Unexpected else");
+            }
+            //// END DEBUG
+
+
+            // Now check whether candidate's log is at least as
+            // up-to-date as receiver's log.
+            if (vote_granted)
+            {
+                vote_granted = false;
+                
                 // check if candidate's log is at least as up to date
                 // as our log.
                 if ((election_proposal.getLastLogIndex() >= last_log_index) &&
@@ -627,37 +567,7 @@ public class CohortManager
                 {
                     // vote for this candidate.
                     vote_granted = true;
-                
-                    // this way, if we need to retrigger voting while
-                    // we're in the election stage, we will start with
-                    // view numbers at least as large as the one
-                    // already proposed.
-                    view_number = proposed_view_number;
-                    if (election_context == null)
-                    {
-                        // means that we had not previously been in an
-                        // electing state.  enter one.
-                        election_context = new ElectionContext(cohort_id);
-                        notify_election_started_listeners(view_number);
-                    }
-                
-                    if (state != ManagerState.ELECTION)
-                    {
-                        current_leader_id = null;
-                        state = ManagerState.ELECTION;
-                        heartbeat_sending_service = null;
-                        leader_context = null;
-                        
-                        // calling this here handles the case that the
-                        // election sender fails: if we aren't in a
-                        // stable state after
-                        // heartbeat_timeout_period_ms, then we will
-                        // try to elect ourself.
-                        start_elect_self_thread(heartbeat_timeout_period_ms);
-                    }
                 }
-                // FIXME: may need to stop being leader/notify
-                // others that I am no longer leader.
             }
         }
         finally
@@ -688,10 +598,7 @@ public class CohortManager
     {
         boolean vote_granted =
             election_proposal_resp.getVoteGranted();
-        // nothing to do.
-        if (! vote_granted)
-            return;
-        
+
         long proposed_view_number =
             election_proposal_resp.getProposedViewNumber();
         long remote_cohort_id = cohort_connection.remote_cohort_id();
@@ -699,6 +606,19 @@ public class CohortManager
         state_lock.lock();
         try
         {
+            boolean transitioned_to_follower =
+                check_become_follower(
+                    remote_cohort_id,proposed_view_number,false);
+
+            // if opposite node is farther ahead than we are, then we
+            // cannot possibly process vote granted.
+            if (transitioned_to_follower)
+                return;
+
+            // nothing to do.
+            if (! vote_granted)
+                return;
+            
             // discard: had already transitioned into new state
             if (election_context == null)
                 return;
@@ -841,6 +761,77 @@ public class CohortManager
         }
     }
 
+    
+    /**
+       Called while holding state_lock.
+
+       @param new_leader_id --- Can also be -1
+
+       @param received_view_number
+
+       @param called_from_append_entries --- true if called from
+       append_entries.
+
+       @returns true if transitioned to follower.  false if did not.
+       
+     */
+    protected boolean check_become_follower(
+        long new_leader_id,long received_view_number,
+        boolean called_from_append_entries)
+    {
+        if (view_number > received_view_number)
+            return false;
+
+        boolean transition = false;
+        // we also notify nodes in case that we previously did not
+        // know leader id associated with this view number.
+        boolean notify = false;
+        if ((view_number == received_view_number) &&
+            called_from_append_entries)
+        {
+            if (state != ManagerState.FOLLOWER)
+                transition = true;
+            else if (current_leader_id == UNKNOWN_LEADER_ID)
+            {
+                current_leader_id = new_leader_id;
+                notify = true;
+            }
+            transition = true;
+        }
+
+        if (view_number < received_view_number)
+            transition = true;
+            
+
+        if (transition)
+        {
+            view_number = received_view_number;
+            current_leader_id = new_leader_id;
+            if (current_leader_id != UNKNOWN_LEADER_ID)
+                notify = true;
+            
+            if (heartbeat_listening_service != null)
+                heartbeat_listening_service.stop_service();
+
+            election_context = null;
+            leader_context = null;
+            heartbeat_sending_service = null;
+        
+            state = ManagerState.FOLLOWER;
+        
+            heartbeat_listening_service =
+                new HeartbeatListeningService(
+                    heartbeat_timeout_period_ms,this,
+                    new_leader_id,received_view_number);
+            heartbeat_listening_service.start_service();
+        }
+
+        if (notify)
+            notify_leader_listeners();
+
+        return transition;
+    }
+    
     /**
        Gets called wehenver we begin a new election on this node.
      */
