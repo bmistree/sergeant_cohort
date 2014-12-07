@@ -680,7 +680,7 @@ public class CohortManager
 
     /************ ILeaderDownListener overrides ********/
     @Override
-    public void leader_down(long leader_id, long view_number)
+    public void leader_down(long leader_id, long view_number_down_at)
     {
         state_lock.lock();
         try
@@ -691,7 +691,7 @@ public class CohortManager
             if (state != ManagerState.FOLLOWER)
                 return;
 
-            if (view_number != view_number)
+            if (view_number != view_number_down_at)
                 return;
 
 
