@@ -115,10 +115,6 @@ public class Log
         long msg_prev_log_index = append_entries.getPrevLogIndex();
         if (msg_prev_log_index > (log.size() - 1))
         {
-            System.out.println(
-                "On node " + local_cohort_id +
-                ", returning false for nonce " +
-                nonce + " because leader's prev log index is greater.");
             return false;
         }
         

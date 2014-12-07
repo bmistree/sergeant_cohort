@@ -421,10 +421,6 @@ public class CohortManager
             if (current_view_number > received_view_number)
             {
                 success = false;
-                System.out.println(
-                    "On node " + local_cohort_id +
-                    ", returning false for nonce " +
-                    nonce + " because we have a larger view number.");
                 return;
             }
             else if(current_view_number == received_view_number)
