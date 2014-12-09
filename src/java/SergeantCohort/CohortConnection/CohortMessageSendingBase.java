@@ -20,6 +20,9 @@ public abstract class CohortMessageSendingBase
      */
     protected void handle_message(CohortMessage msg)
     {
+        if (msg == null)
+            return;
+        
         message_listener_lock.lock();
         for (ICohortMessageListener msg_listener : message_listener_set)
         {
