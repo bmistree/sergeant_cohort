@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import subprocess
 import os
 import sys
 CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
@@ -194,8 +195,8 @@ def run_cli():
 
     args = parser.parse_args()
     
-    run(parser.num_nodes,parser.jar_path,parser.failure_probability,
-        parser.output_filename, parser.seconds_to_run)
+    run(args.num_nodes,args.jar_path,args.failure_probability,
+        args.output_filename, args.seconds_to_run)
     
     
 
