@@ -158,6 +158,7 @@ public class LeaderDuringTermTest
         public synchronized void election_started(
             long election_view_number, long local_cohort_id)
         {
+            System.out.println("Election started for view number " + election_view_number);
             // nothing to do here.
         }
 

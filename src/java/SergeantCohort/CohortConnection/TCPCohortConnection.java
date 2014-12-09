@@ -39,6 +39,7 @@ public class TCPCohortConnection
     {
         this.local_cohort_info = local_cohort_info;
         this.remote_cohort_info = remote_cohort_info;
+        add_connection_listener(this);
     }
 
     /**
@@ -170,7 +171,14 @@ public class TCPCohortConnection
                 CohortMessage cohort_message =
                     CohortMessage.parseDelimitedFrom(
                         to_read_from.getInputStream());
+                if (cohort_message == null)
+                {
+                    System.out.println("Null on " + to_read_from);
+                    break;
+                }
+                
                 handle_message(cohort_message);
+
             }
             catch (IOException ex)
             {
@@ -302,6 +310,7 @@ public class TCPCohortConnection
         non_blocking_listen_or_connect();
     }
 
+    
     @Override
     public void handle_connection_up(ICohortConnection up_connection)
     {}
