@@ -5,6 +5,12 @@ import sys
 CURRENT_DIRECTORY = os.path.dirname(os.path.abspath(__file__))
 INTERCEPTOR_DIRECTORY = os.path.join(
     CURRENT_DIRECTORY,'..','..','deps','interceptor')
+sys.path.append(INTERCEPTOR_DIRECTORY)
+
+from interceptor.util import HostPortPair
+from interceptor.plan import RandomFailPlan
+from interceptor.bridge import Bridge
+
 
 BASE_TCP_PORT = 2222
 def get_unique_tcp_port ():
@@ -53,7 +59,16 @@ class RemoteDictElement(object):
         bridge_remote should get intercepted and redirected to
         real_remote
         '''
-        assert False
+        intercepting = HostPortPair('127.0.0.1',self.bridge_to_remote_port)
+        to_connect_to = HostPortPair('127.0.0.1',self.real_remote_port)
+
+        plan_one_side = RandomFailPlan(failure_probability)
+        plan_other_side = RandomFailPlan(failure_probability)
+        
+        bridge = Bridge(
+            intercepting,plan_one_side,
+            to_connect_to,plan_other_side)
+        bridge.non_blocking_connection_setup()
 
         
 
@@ -71,6 +86,11 @@ class CohortConnectionInfo(object):
             return self.remote_dict[remote_cohort_id].get_reversed()
         return None
 
+    def start_all_bridges(self,failure_probability):
+        for remote_id in self.remote_dict:
+            remote_dict_element = self.remote_dict[remote_id]
+            remote_dict_element.start_bridge(failure_probability)
+    
     def produce_java_arg_str(self):
         '''
         @returns {str} of the form:
@@ -128,12 +148,11 @@ def produce_connection_info_str_and_start_bridges(num_nodes,failure_probability)
             local_connection_info.add_remote(remote_cohort_id,to_add)
 
 
-    # FIXME: Still need to start bridges
-
     to_return = ''
     for local_cohort_id in connection_info_dict:
         local_connection_info = connection_info_dict[local_cohort_id]
-        to_return += local_connection_info.produce_java_arg_str() + "|" + '\n'
+        local_connection_info.start_all_bridges(failure_probability)
+        to_return += local_connection_info.produce_java_arg_str() + "|" 
 
     return to_return
         
