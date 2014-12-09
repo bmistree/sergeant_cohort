@@ -628,10 +628,16 @@ public class CohortManager
             }
 
             election_context.votes_received_set.add(remote_cohort_id);
-
+            
             // Check to make self leader.
             if (election_context.votes_received_set.size() >= quorum_size)
             {
+                System.out.println(
+                    "Node " + local_cohort_id +
+                    " transitions to leader from view number " +
+                    view_number + " to new view number " + 
+                    proposed_view_number + " at state " + state);
+
                 view_number = proposed_view_number;
                 election_context = null;
                 state = ManagerState.LEADER;
@@ -798,10 +804,16 @@ public class CohortManager
 
         if (view_number < received_view_number)
             transition = true;
-            
 
         if (transition)
         {
+            System.out.println(
+                "Node " + local_cohort_id +
+                " transitions to follower from view number " +
+                view_number + " to new view number " + 
+                received_view_number + " at state " + state);
+
+            
             view_number = received_view_number;
             current_leader_id = new_leader_id;
             if (current_leader_id != UNKNOWN_LEADER_ID)
@@ -815,7 +827,7 @@ public class CohortManager
             heartbeat_sending_service = null;
         
             state = ManagerState.FOLLOWER;
-        
+
             heartbeat_listening_service =
                 new HeartbeatListeningService(
                     heartbeat_timeout_period_ms,this,
