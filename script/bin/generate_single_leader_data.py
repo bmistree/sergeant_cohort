@@ -180,7 +180,7 @@ def run_cli():
         '--num_nodes',type=int,help='Number of nodes in our raft ring',
         required=True)
     parser.add_argument(
-        '--jar_path',type=string,help='Path to leader_during_term.jar',
+        '--jar_path',type=str,help='Path to leader_during_term.jar',
         required=True)
     parser.add_argument(
         '--failure_probability',type=float,help='Link failure probability',
@@ -192,7 +192,7 @@ def run_cli():
         '--seconds_to_run',type=int,help='How long to run experiment for',
         required=True)
 
-    argparse.parse_args()
+    args = parser.parse_args()
     
     run(parser.num_nodes,parser.jar_path,parser.failure_probability,
         parser.output_filename, parser.seconds_to_run)
@@ -200,7 +200,4 @@ def run_cli():
     
 
 if __name__ == '__main__':
-    #run_cli()
-    print '\n\n'
-    print produce_connection_info_str_and_start_bridges(2,.1)
-    print '\n\n'
+    run_cli()
