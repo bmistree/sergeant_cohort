@@ -87,7 +87,7 @@
         name="jar_leader_during_term"
         depends="compile">
         <antcall target="make_jar">
-          <param name="main_class" value="LeaderDruingTermTest"/>
+          <param name="main_class" value="LeaderDuringTermTest"/>
           <param name="dest_jar" value="leader_during_term.jar"/>
         </antcall>
     </target>
