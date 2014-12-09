@@ -30,15 +30,16 @@ public class Util
     {
         Map<Long,Set<CohortInfo.CohortInfoPair>> to_return =
             new HashMap<Long,Set<CohortInfo.CohortInfoPair>>();
-        
-        String[] individual_cohort_strings = mapping_string.split("|");
 
+        
+        String[] individual_cohort_strings = mapping_string.split("\\|");
+        
         for (String cohort_string : individual_cohort_strings)
         {
             // handles case where last line is terminated with |
             if (cohort_string.trim().equals(""))
                 continue;
-            
+
             long cohort_id = parse_cohort_id_from_cohort_string(cohort_string);
             Set<CohortInfo.CohortInfoPair> connection_set =
                 parse_connection_set_from_cohort_string(
@@ -86,8 +87,6 @@ public class Util
           local ports and hosts.
         */
         String connection_set_string = cohort_string.split(":")[1];
-
-        
         String[] connection_strings = connection_set_string.split(";");
 
 
