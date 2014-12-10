@@ -43,6 +43,12 @@ public class CohortManager
      */
     protected final int heartbeat_send_period_ms;
 
+    /**
+       Force sending an append entries before timeout if we've
+       received this many entries.
+     */
+    protected final int max_batch_size;
+    protected int batch_counter = 0;
     
     protected final static Random rand = new Random();
 
@@ -132,16 +138,18 @@ public class CohortManager
        its own.
      */
     final protected boolean debug_can_be_leader;
-    
+
     public CohortManager(
         Set<CohortInfo.CohortInfoPair> connection_info,
         ICohortConnectionFactory cohort_connection_factory,
         long local_cohort_id, int heartbeat_timeout_period_ms,
-        int heartbeat_send_period_ms, boolean debug_can_be_leader)
+        int heartbeat_send_period_ms, boolean debug_can_be_leader,
+        int max_batch_size)
     {
         log = new Log(local_cohort_id);
         
         this.debug_can_be_leader = debug_can_be_leader;
+        this.max_batch_size = max_batch_size;
         
         for (CohortInfo.CohortInfoPair pair : connection_info)
         {
@@ -176,12 +184,12 @@ public class CohortManager
         Set<CohortInfo.CohortInfoPair> connection_info,
         ICohortConnectionFactory cohort_connection_factory,
         long local_cohort_id, int heartbeat_timeout_period_ms,
-        int heartbeat_send_period_ms)
+        int heartbeat_send_period_ms, int max_batch_size)
     {
         this(
             connection_info, cohort_connection_factory,
             local_cohort_id, heartbeat_timeout_period_ms,
-            heartbeat_send_period_ms, true);
+            heartbeat_send_period_ms, true, max_batch_size);
     }
     
     /**
@@ -208,8 +216,16 @@ public class CohortManager
         try
         {
             if (state == ManagerState.LEADER)
+            {
                 log.add_to_log(entry_to_try_to_add,view_number);
-
+                ++batch_counter;
+                // force sending log to followers
+                if ((batch_counter % max_batch_size) == 0)
+                {
+                    // send append to all
+                    heartbeat_sending_service.send_heartbeat();
+                }
+            }
             return current_leader_id;
         }
         finally

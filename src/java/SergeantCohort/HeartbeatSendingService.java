@@ -6,6 +6,7 @@ import ProtocolLibs.AppendEntriesProto.AppendEntries;
 import ProtocolLibs.CohortMessageProto.CohortMessage;
 
 import SergeantCohort.CohortConnection.ICohortConnection;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class HeartbeatSendingService extends Thread
 {
@@ -34,7 +35,7 @@ public class HeartbeatSendingService extends Thread
        Send a single heartbeat message to the other end of the
        connection.
      */
-    protected boolean send_heartbeat()
+    public synchronized boolean send_heartbeat()
     {        
         for (ICohortConnection connection : connection_set)
         {
@@ -50,7 +51,7 @@ public class HeartbeatSendingService extends Thread
         }
         return true;
     }
-
+    
     /**
        Separate daemon thread that periodically sends heartbeats to
        other side.
