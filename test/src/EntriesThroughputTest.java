@@ -3,6 +3,7 @@ package test;
 import java.util.Map;
 import java.util.Set;
 import java.util.HashSet;
+import java.util.Random;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.Condition;
 
@@ -115,11 +116,13 @@ public class EntriesThroughputTest
         leader.add_apply_entry_listener(externalized_counter);
         
         // ask leader to add NUM_ENTRIES a bunch of times.
+        // inserting random bytes so that ensure can't just compress.
+        byte[] dummy_entry = new byte[entry_size];
+        new Random().nextBytes(dummy_entry);
         System.out.println("\nStarting experiment\n");
         externalized_counter.starting_experiment();
         for (int i = 0; i < num_entries_to_replicate; ++i)
         {
-            byte[] dummy_entry = new byte[entry_size];
             leader.add_entry_if_leader(dummy_entry);
         }
 
