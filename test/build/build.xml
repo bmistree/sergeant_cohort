@@ -92,6 +92,14 @@
         </antcall>
     </target>
 
+    <target
+        name="jar_entries_throughput"
+        depends="compile">
+        <antcall target="make_jar">
+          <param name="main_class" value="EntriesThroughputTest"/>
+          <param name="dest_jar" value="entries_throughput.jar"/>
+        </antcall>
+    </target>
         
     
     <!-- Make a jar -->
