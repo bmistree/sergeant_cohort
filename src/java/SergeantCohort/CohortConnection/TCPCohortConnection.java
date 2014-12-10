@@ -175,8 +175,6 @@ public class TCPCohortConnection
                         to_read_from.getInputStream());
                 if (cohort_message == null)
                     break;
-
-                System.out.println("\nGot message to handle\n");
                 handle_message(cohort_message);
             }
             catch (IOException ex)
