@@ -123,6 +123,7 @@ public class TCPCohortConnection
                 try
                 {
                     Socket new_socket = server_socket.accept();
+                    new_socket.setTcpNoDelay(true);
                     socket_lock.lock();
                     socket = new_socket;
                     socket_lock.unlock();
@@ -239,6 +240,8 @@ public class TCPCohortConnection
                     socket = new Socket(
                         remote_cohort_info.ip_addr_or_hostname,
                         remote_cohort_info.port);
+
+                    socket.setTcpNoDelay(true);
                     
                     // update state variable and notify all listeners
                     // that our connection is up again.
