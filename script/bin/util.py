@@ -9,7 +9,8 @@ INTERCEPTOR_DIRECTORY = os.path.join(
 sys.path.append(INTERCEPTOR_DIRECTORY)
 
 from interceptor.util import HostPortPair
-from interceptor.plan import RandomFailConstantDelayPlan
+from interceptor.plan import (
+    RandomFailConstantDelayPlan, ConstantDelayPlan)
 from interceptor.bridge import Bridge
 
 
@@ -116,7 +117,7 @@ class PlanFactory(object):
     def construct_plan(self):
         pass
 
-class RandomFailConstantDelayPlan(PlanFactory):
+class RandomFailConstantDelayPlanFactory(PlanFactory):
     def __init__(self,failure_probability,failure_close_wait_seconds):
         self.failure_probability = failure_probability
         self.failure_close_wait_seconds = failure_close_wait_seconds
@@ -125,15 +126,32 @@ class RandomFailConstantDelayPlan(PlanFactory):
         return RandomFailConstantDelayPlan(
             self.failure_probability,self.failure_close_wait_seconds)
 
+class ConstantDelayPlanFactory(PlanFactory):
+    def __init__(self,seconds_to_delay_before_forwarding):
+        self.seconds_to_delay_before_forwarding = (
+            seconds_to_delay_before_forwarding)
+    
+    def construct_plan(self):
+        return ConstantDelayPlan(self.seconds_to_delay_before_forwarding)
+    
+    
 def produce_rand_fail_const_delay_conn_info_str_and_start_bridges(
     num_nodes,failure_probability,failure_close_wait_seconds):
 
-    plan_factory =RandomFailConstantDelayPlan(
+    plan_factory = RandomFailConstantDelayPlanFactory(
         failure_probability,failure_close_wait_seconds)
     
     return _produce_connection_info_str_and_start_bridges(
         num_nodes,plan_factory)
 
+def produce_const_delay_conn_info_str_and_start_bridges(
+    num_nodes,connection_delay_seconds):
+
+    plan_factory = ConstantDelayPlanFactory(connection_delay_seconds)
+    
+    return _produce_connection_info_str_and_start_bridges(
+        num_nodes,plan_factory)
+    
 
 def _produce_connection_info_str_and_start_bridges(num_nodes,
                                                    plan_factory):
