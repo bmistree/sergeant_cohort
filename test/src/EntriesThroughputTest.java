@@ -31,6 +31,7 @@ public class EntriesThroughputTest
     public final static int COHORT_PORTS_INDEX = 1;
     public final static int OUTPUT_FILENAME_INDEX = 2;
     public final static int HEARTBEAT_TIMEOUT_PERIOD_MS_INDEX = 3;
+    public final static int ENTRY_SIZE_INDEX = 4;
     
     public static ExternalizedCounter externalized_counter = null;
     
@@ -42,6 +43,7 @@ public class EntriesThroughputTest
         String output_filename = args[OUTPUT_FILENAME_INDEX];
         int heartbeat_timeout_period_ms =
             Integer.parseInt(args[HEARTBEAT_TIMEOUT_PERIOD_MS_INDEX]);
+        int entry_size = Integer.parseInt(args[ENTRY_SIZE_INDEX]);
         
         externalized_counter =
             new ExternalizedCounter(num_entries_to_replicate);
@@ -50,7 +52,7 @@ public class EntriesThroughputTest
             Util.produce_cohort_mappings_from_string(cohort_ports);
 
         run(num_entries_to_replicate,connection_map,
-            heartbeat_timeout_period_ms);
+            heartbeat_timeout_period_ms,entry_size);
 
         try
         {
@@ -67,7 +69,7 @@ public class EntriesThroughputTest
     public static void run(
         int num_entries_to_replicate,
         Map<Long,Set<CohortInfo.CohortInfoPair>> cohort_map,
-        int heartbeat_timeout_period_ms)
+        int heartbeat_timeout_period_ms,int entry_size)
     {
         // create lots of managers
         Set<CohortManager> cohort_managers = new HashSet<CohortManager>();
@@ -117,7 +119,7 @@ public class EntriesThroughputTest
         externalized_counter.starting_experiment();
         for (int i = 0; i < num_entries_to_replicate; ++i)
         {
-            byte[] dummy_entry = new byte[0];
+            byte[] dummy_entry = new byte[entry_size];
             leader.add_entry_if_leader(dummy_entry);
         }
 
