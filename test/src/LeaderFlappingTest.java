@@ -19,6 +19,7 @@ public class LeaderFlappingTest
     public final static long COHORT_SIZE = 3L;
     public final static int HEARTBEAT_TIMEOUT_PERIOD_MS = 200;
     public final static int HEARTBEAT_SEND_PERIOD_MS = 60;
+    public final static int MAX_BATCH_SIZE = 20;
     
     public static void main(String[] args)
     {
@@ -101,7 +102,8 @@ public class LeaderFlappingTest
                 new CohortManager(
                     connection_info,TCPCohortConnection.CONNECTION_FACTORY,
                     cohort_id,HEARTBEAT_TIMEOUT_PERIOD_MS,
-                    HEARTBEAT_SEND_PERIOD_MS, !cannot_be_leader);
+                    HEARTBEAT_SEND_PERIOD_MS, !cannot_be_leader,
+                    MAX_BATCH_SIZE);
             
             cohort_managers.add(cohort_manager);
         }

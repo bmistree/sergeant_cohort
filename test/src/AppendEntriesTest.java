@@ -19,7 +19,7 @@ public class AppendEntriesTest
     public final static long COHORT_SIZE = 3L;
     public final static int HEARTBEAT_TIMEOUT_PERIOD_MS = 500;
     public final static int HEARTBEAT_SEND_PERIOD_MS = 150;
-
+    public final static int MAX_BATCH_SIZE = 20;
     public final static int NUM_ENTRIES = 100;
     
     public static void main(String[] args)
@@ -51,8 +51,8 @@ public class AppendEntriesTest
                 new CohortManager(
                     connection_info,TCPCohortConnection.CONNECTION_FACTORY,
                     cohort_id,HEARTBEAT_TIMEOUT_PERIOD_MS,
-                    HEARTBEAT_SEND_PERIOD_MS);
-            
+                    HEARTBEAT_SEND_PERIOD_MS, MAX_BATCH_SIZE);
+
             cohort_managers.add(cohort_manager);
             cohort_manager.add_apply_entry_listener(externalized_counter);
         }
