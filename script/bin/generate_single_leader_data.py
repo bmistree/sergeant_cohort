@@ -9,7 +9,7 @@ INTERCEPTOR_DIRECTORY = os.path.join(
 sys.path.append(INTERCEPTOR_DIRECTORY)
 
 from interceptor.util import HostPortPair
-from interceptor.plan import RandomFailPlan
+from interceptor.plan import RandomFailConstantDelayPlan
 from interceptor.bridge import Bridge
 
 
@@ -54,7 +54,7 @@ class RemoteDictElement(object):
                     'bridge_to_remote_port': self.bridge_to_remote_port
                 })
 
-    def start_bridge(self,failure_probability):
+    def start_bridge(self,failure_probability,failure_close_wait_seconds):
         '''
         Only starts bridge in one direction: any connection to
         bridge_remote should get intercepted and redirected to
@@ -63,8 +63,10 @@ class RemoteDictElement(object):
         intercepting = HostPortPair('127.0.0.1',self.bridge_to_remote_port)
         to_connect_to = HostPortPair('127.0.0.1',self.real_remote_port)
 
-        plan_one_side = RandomFailPlan(failure_probability)
-        plan_other_side = RandomFailPlan(failure_probability)
+        plan_one_side = RandomFailConstantDelayPlan(
+            failure_probability,failure_close_wait_seconds)
+        plan_other_side = RandomFailConstantDelayPlan(
+            failure_probability,failure_close_wait_seconds)
         
         bridge = Bridge(
             intercepting,plan_one_side,
@@ -87,10 +89,12 @@ class CohortConnectionInfo(object):
             return self.remote_dict[remote_cohort_id].get_reversed()
         return None
 
-    def start_all_bridges(self,failure_probability):
+    def start_all_bridges(self,failure_probability,
+                          failure_close_wait_seconds):
         for remote_id in self.remote_dict:
             remote_dict_element = self.remote_dict[remote_id]
-            remote_dict_element.start_bridge(failure_probability)
+            remote_dict_element.start_bridge(
+                failure_probability,failure_close_wait_seconds)
     
     def produce_java_arg_str(self):
         '''
@@ -110,7 +114,9 @@ class CohortConnectionInfo(object):
 
 
         
-def produce_connection_info_str_and_start_bridges(num_nodes,failure_probability):
+def produce_connection_info_str_and_start_bridges(num_nodes,
+                                                  failure_probability,
+                                                  failure_close_wait_seconds):
     '''
     @param {int} num_nodes --- Number of nodes to run in raft ring.
 
@@ -152,18 +158,19 @@ def produce_connection_info_str_and_start_bridges(num_nodes,failure_probability)
     to_return = ''
     for local_cohort_id in connection_info_dict:
         local_connection_info = connection_info_dict[local_cohort_id]
-        local_connection_info.start_all_bridges(failure_probability)
+        local_connection_info.start_all_bridges(
+            failure_probability,failure_close_wait_seconds)
         to_return += local_connection_info.produce_java_arg_str() + "|" 
 
     return to_return
         
 
-def run(num_nodes,jar_path,failure_probability,output_filename,
-        seconds_to_run):
+def run(num_nodes,jar_path,failure_probability,failure_close_wait_seconds,
+        output_filename, seconds_to_run):
     
     connection_info_str = (
         produce_connection_info_str_and_start_bridges(
-            num_nodes,failure_probability))
+            num_nodes,failure_probability,failure_close_wait_seconds))
     
     cmd_vec = [
         'java', '-ea', '-jar', jar_path,connection_info_str,
@@ -187,6 +194,10 @@ def run_cli():
         '--failure_probability',type=float,help='Link failure probability',
         required=True)
     parser.add_argument(
+        '--failure_wait',type=float,
+        help=('When failing a connection, wait this long (in seconds) ' +
+              'before calling close'))
+    parser.add_argument(
         '--output_filename',type=str,help='Name of file to save results to',
         required=True)
     parser.add_argument(
@@ -196,7 +207,7 @@ def run_cli():
     args = parser.parse_args()
     
     run(args.num_nodes,args.jar_path,args.failure_probability,
-        args.output_filename, args.seconds_to_run)
+        args.failure_wait, args.output_filename, args.seconds_to_run)
     
     
 
