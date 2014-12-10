@@ -93,6 +93,22 @@ class CohortConnectionInfo(object):
             remote_dict_element = self.remote_dict[remote_id]
             remote_dict_element.start_bridge(plan_factory)
 
+    def start_all_bridges_remote_specific(self,plan_factory_dict):
+        '''
+        @param {dict} plan_factory_dict --- Keys are remote cohort
+        ids.  Values are plan factories to use for them.
+        '''
+        for remote_id in self.remote_dict:
+            remote_dict_element = self.remote_dict[remote_id]
+            plan_factory = plan_factory_dict.get(remote_id,None)
+            #### DEBUG
+            if plan_factory is None:
+                print ('Missing remote in plan factory dict')
+                assert False
+            #### END DEBUG
+
+            remote_dict_element.start_bridge(plan_factory)
+            
     
     def produce_java_arg_str(self):
         '''
@@ -152,7 +168,7 @@ def produce_const_delay_conn_info_str_and_start_bridges(
     return _produce_connection_info_str_and_start_bridges(
         num_nodes,plan_factory)
     
-
+    
 def _produce_connection_info_str_and_start_bridges(num_nodes,
                                                    plan_factory):
 
