@@ -9,7 +9,7 @@ NUM_NODES = 3
 
 
 def run(jar_path,connection_delay_seconds,output_filename,
-        num_appends):
+        num_appends,heartbeat_timeout_period_ms):
 
     connection_info_str = (
         produce_const_delay_conn_info_str_and_start_bridges(
@@ -17,7 +17,7 @@ def run(jar_path,connection_delay_seconds,output_filename,
     
     cmd_vec = [
         'java', '-ea', '-jar', jar_path,str(num_appends),
-        connection_info_str,output_filename]
+        connection_info_str,output_filename,str(heartbeat_timeout_period_ms)]
 
     subprocess.call(cmd_vec)
 
@@ -39,11 +39,16 @@ def run_cli():
     parser.add_argument(
         '--num_appends',type=int,help='Number of entries to append to list',
         required=True)
+    parser.add_argument(
+        '--heartbeat_timeout_period_ms',type=int,
+        help='How many ms to wait before timing out heartbeat',
+        required=True)
 
+    
     args = parser.parse_args()
     
     run(args.jar_path,args.connection_delay_seconds,args.output_filename,
-        args.num_appends)
+        args.num_appends,args.heartbeat_timeout_period_ms)
     
 
 if __name__ == '__main__':

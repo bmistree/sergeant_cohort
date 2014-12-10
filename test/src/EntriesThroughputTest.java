@@ -22,6 +22,7 @@ import SergeantCohort.IApplyEntryListener;
 public class EntriesThroughputTest
 {
     public final static long COHORT_SIZE = 3L;
+
     public final static int HEARTBEAT_TIMEOUT_PERIOD_MS = 500;
     public final static int HEARTBEAT_SEND_PERIOD_MS = 150;
     public final static int MAX_BATCH_SIZE = 20;
@@ -29,7 +30,8 @@ public class EntriesThroughputTest
     public final static int NUM_ENTRIES_TO_REPLICATE_INDEX = 0;
     public final static int COHORT_PORTS_INDEX = 1;
     public final static int OUTPUT_FILENAME_INDEX = 2;
-
+    public final static int HEARTBEAT_TIMEOUT_PERIOD_MS_INDEX = 3;
+    
     public static ExternalizedCounter externalized_counter = null;
     
     public static void main(String[] args)
@@ -38,14 +40,17 @@ public class EntriesThroughputTest
             Integer.parseInt(args[NUM_ENTRIES_TO_REPLICATE_INDEX]);
         String cohort_ports = args[COHORT_PORTS_INDEX];
         String output_filename = args[OUTPUT_FILENAME_INDEX];
-
+        int heartbeat_timeout_period_ms =
+            Integer.parseInt(args[HEARTBEAT_TIMEOUT_PERIOD_MS_INDEX]);
+        
         externalized_counter =
             new ExternalizedCounter(num_entries_to_replicate);
         
         Map<Long,Set<CohortInfo.CohortInfoPair>> connection_map =
             Util.produce_cohort_mappings_from_string(cohort_ports);
 
-        run(num_entries_to_replicate,connection_map);
+        run(num_entries_to_replicate,connection_map,
+            heartbeat_timeout_period_ms);
 
         try
         {
@@ -61,7 +66,8 @@ public class EntriesThroughputTest
     
     public static void run(
         int num_entries_to_replicate,
-        Map<Long,Set<CohortInfo.CohortInfoPair>> cohort_map)
+        Map<Long,Set<CohortInfo.CohortInfoPair>> cohort_map,
+        int heartbeat_timeout_period_ms)
     {
         // create lots of managers
         Set<CohortManager> cohort_managers = new HashSet<CohortManager>();
@@ -74,7 +80,7 @@ public class EntriesThroughputTest
             CohortManager cohort_manager =
                 new CohortManager(
                     connection_info,TCPCohortConnection.CONNECTION_FACTORY,
-                    cohort_id,HEARTBEAT_TIMEOUT_PERIOD_MS,
+                    cohort_id,heartbeat_timeout_period_ms,
                     HEARTBEAT_SEND_PERIOD_MS, MAX_BATCH_SIZE);
             
             cohort_managers.add(cohort_manager);
@@ -85,10 +91,11 @@ public class EntriesThroughputTest
             cohort_manager.start_manager();
 
         // wait for a while to get a leader
+        System.out.println("Waiting for leader");
         try
         {
             // wait five seconds
-            Thread.sleep(1000*5);
+            Thread.sleep(1000*10);
         }
         catch (InterruptedException ex)
         {
