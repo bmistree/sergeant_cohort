@@ -23,6 +23,8 @@ public class TCPCohortConnection
        if our cohort id is less than that of the remote cohort.
      */
     protected final CohortInfo local_cohort_info;
+
+    protected ServerSocket server_socket = null;
     
     /**
        Information for other side to connect to.
@@ -75,7 +77,7 @@ public class TCPCohortConnection
                     sock = this_ptr.listen_thread();
                 else
                     sock = this_ptr.connect_thread();
-
+                
                 if (sock != null)
                     read_from_socket(sock);
             }
@@ -113,16 +115,14 @@ public class TCPCohortConnection
 
         while (true)
         {
-            ServerSocket server_socket = null;
             try
             {
-                server_socket = new ServerSocket(local_cohort_info.port);
+                if (server_socket == null)
+                    server_socket = new ServerSocket(local_cohort_info.port);
                 
                 try
                 {
                     Socket new_socket = server_socket.accept();
-                    server_socket.close();
-
                     socket_lock.lock();
                     socket = new_socket;
                     socket_lock.unlock();
@@ -136,11 +136,13 @@ public class TCPCohortConnection
                 }
                 catch(IOException ex)
                 {
-                    server_socket.close();
+                    System.out.println("\n\n\nGOT THE IOEXCEPTION\n\n");
+                    // server_socket.close();
                 }
             }
             catch (IOException ex)
             {
+                System.out.println("\n\n\nGOT THE OTHER IOEXCEPTION\n\n");
                 // EMPTY: just wait some time and retry.
             }
 
@@ -172,13 +174,10 @@ public class TCPCohortConnection
                     CohortMessage.parseDelimitedFrom(
                         to_read_from.getInputStream());
                 if (cohort_message == null)
-                {
-                    System.out.println("Null on " + to_read_from);
                     break;
-                }
-                
-                handle_message(cohort_message);
 
+                System.out.println("\nGot message to handle\n");
+                handle_message(cohort_message);
             }
             catch (IOException ex)
             {
@@ -187,8 +186,26 @@ public class TCPCohortConnection
                 break;
             }
         }
+
+        socket_lock.lock();
+        boolean fire_down = false;
+        if (socket == to_read_from)
+        {
+            fire_down = true;
+            try
+            {
+                socket.close();
+            }
+            catch (IOException ex)
+            {
+                System.out.println("\n\nWEIRD EXCEPTION on " + this);
+            }
+            socket = null;
+        }
+        socket_lock.unlock();
+        if (fire_down)
+            connection_down();
     }
-    
     
     /**
        Should only be called from non_blocking_listen_or_connect as a
@@ -224,7 +241,7 @@ public class TCPCohortConnection
                     socket = new Socket(
                         remote_cohort_info.ip_addr_or_hostname,
                         remote_cohort_info.port);
-
+                    
                     // update state variable and notify all listeners
                     // that our connection is up again.
                     state = CohortConnectionState.CONNECTION_UP;
@@ -283,6 +300,14 @@ public class TCPCohortConnection
         catch (IOException ex)
         {
             // socket failed: transition into down state
+            try
+            {
+                socket.close();
+            }
+            catch (IOException ex2)
+            {
+                System.out.println("\n\nWeirder exception on " + this);
+            }
             socket = null;
             socket_lock.unlock();
             connection_down();
@@ -297,7 +322,7 @@ public class TCPCohortConnection
         // initial connection.
         non_blocking_listen_or_connect();
     }
-
+    
     /************************ ICohortConnectionListener overrides ****/
     /**
        @param connection --- this.
