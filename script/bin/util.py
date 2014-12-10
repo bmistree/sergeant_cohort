@@ -168,22 +168,11 @@ def produce_const_delay_conn_info_str_and_start_bridges(
     return _produce_connection_info_str_and_start_bridges(
         num_nodes,plan_factory)
     
-    
-def _produce_connection_info_str_and_start_bridges(num_nodes,
-                                                   plan_factory):
-
+def _produce_connection_info_dict(num_nodes):
     '''
-    @param {int} num_nodes --- Number of nodes to run in raft ring.
-
-    @returns {str} --- Of the form:
-    
-          local_id: host,port,other_id,host,port;
-                  host,port,other_id,host,port; ...  | 
-          local_id: host,port,other_id,host,port;
-                  host,port,other_id,host,port; ...  |
-
-    where everything between a | is the connection info for a single
-    node.
+    @param {int} num_nodes
+    @returns {dict} --- Keys are cohort ids.  Values are
+    CohortConnectionInfo objects.
     '''
     connection_info_dict = {}
     
@@ -208,8 +197,28 @@ def _produce_connection_info_str_and_start_bridges(num_nodes,
                     get_unique_tcp_port(), get_unique_tcp_port())
                 
             local_connection_info.add_remote(remote_cohort_id,to_add)
+    return connection_info_dict
 
+    
 
+def _produce_connection_info_str_and_start_bridges(num_nodes,
+                                                   plan_factory):
+
+    '''
+    @param {int} num_nodes --- Number of nodes to run in raft ring.
+
+    @returns {str} --- Of the form:
+    
+          local_id: host,port,other_id,host,port;
+                  host,port,other_id,host,port; ...  | 
+          local_id: host,port,other_id,host,port;
+                  host,port,other_id,host,port; ...  |
+
+    where everything between a | is the connection info for a single
+    node.
+    '''
+    connection_info_dict = _produce_connection_info_dict(num_nodes)
+    
     to_return = ''
     for local_cohort_id in connection_info_dict:
         local_connection_info = connection_info_dict[local_cohort_id]
