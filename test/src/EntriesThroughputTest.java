@@ -196,6 +196,8 @@ public class EntriesThroughputTest
                 cond.signal();
                 lock.unlock();
             }
+            if ((num_times_applied % 100) == 0)
+                System.out.println(num_times_applied);
         }
     }
 }
