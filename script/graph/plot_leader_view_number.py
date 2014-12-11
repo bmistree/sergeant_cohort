@@ -9,10 +9,9 @@ import matplotlib.lines as lines
 NO_LEADER_ID = -1
 
 FLAPPING_EXPERIMENT_ID_GRAPH_HEIGHTS = {
-    0: .025,
-    1: .25,
-    2: .53,
-    NO_LEADER_ID: .8
+    0: .15,
+    1: .45,
+    NO_LEADER_ID: .75
     }
 
 RANDOM_FAILURE_EXPERIMENT_ID_GRAPH_HEIGHTS = {
@@ -23,8 +22,8 @@ RANDOM_FAILURE_EXPERIMENT_ID_GRAPH_HEIGHTS = {
     }
 
 class GraphHeightType(object):
-    RANDOM_FAILURE_EXPERIMENT = 0
-    FLAPPING_EXPERIMENT = 1
+    RANDOM_FAILURE_EXPERIMENT = 'RANDOM_FAILURE_EXPERIMENT'
+    FLAPPING_EXPERIMENT = 'FLAPPING_EXPERIMENT'
     
     @staticmethod
     def generate_choose_options():
@@ -92,10 +91,13 @@ def draw_leader_history_graph(leader_history_list, output_filename,
         graph_height_dict[1] +
         label_offset_y)
     axes.annotate('Node B leader',xy=(label_x,b_leader_y))
-    c_leader_y = (
-        graph_height_dict[2] +
-        label_offset_y)
-    axes.annotate('Node C leader',xy=(label_x,c_leader_y))
+
+    # Already skimmed: no flapping data for other nodes.
+    if graph_height_type == GraphHeightType.RANDOM_FAILURE_EXPERIMENT:
+        c_leader_y = (
+            graph_height_dict[2] +
+            label_offset_y)
+        axes.annotate('Node C leader',xy=(label_x,c_leader_y))
 
     axes.set_title(title)
     axes.set_xticks([])
@@ -165,7 +167,7 @@ def run_cli():
         '--title',type=str,help='Title to use for graph',
         required=True)
     parser.add_argument(
-        '--graph_height_type',type=int,
+        '--graph_height_type',type=str,
         choices=GraphHeightType.generate_choose_options(),
         help='Title to use for graph',
         required=True)
