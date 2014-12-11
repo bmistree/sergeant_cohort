@@ -29,7 +29,7 @@ def run_cli():
         'Start a raft ring and check who is leader as it runs, '+
         'while we fail nodes.')
     parser.add_argument(
-        '--jar_path',type=str,help='Path to leader_during_term.jar',
+        '--jar_path',type=str,help='Path to entries_throughput.jar',
         required=True)
     parser.add_argument(
         '--connection_delay_seconds',type=float,
