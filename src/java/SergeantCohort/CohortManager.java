@@ -823,12 +823,11 @@ public class CohortManager
 
         if (transition)
         {
-            System.out.println(
-                "Node " + local_cohort_id +
-                " transitions to follower from view number " +
-                view_number + " to new view number " + 
-                received_view_number + " at state " + state);
-
+            // System.out.println(
+            //     "Node " + local_cohort_id +
+            //     " transitions to follower from view number " +
+            //     view_number + " to new view number " + 
+            //     received_view_number + " at state " + state);
             
             view_number = received_view_number;
             current_leader_id = new_leader_id;
