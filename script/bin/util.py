@@ -10,7 +10,7 @@ sys.path.append(INTERCEPTOR_DIRECTORY)
 
 from interceptor.util import HostPortPair
 from interceptor.plan import (
-    RandomFailConstantDelayPlan, ConstantDelayPlan)
+    RandomFailConstantDelayPlan, ConstantDelayPlan, PassThroughPlan,DropPlan)
 from interceptor.bridge import Bridge
 
 
@@ -133,6 +133,14 @@ class PlanFactory(object):
     def construct_plan(self):
         pass
 
+class PassThroughPlanFactory(PlanFactory):
+    def construct_plan(self):
+        return PassThroughPlan()
+
+class DropPlanFactory(PlanFactory):
+    def construct_plan(self):
+        return DropPlan()
+    
 class RandomFailConstantDelayPlanFactory(PlanFactory):
     def __init__(self,failure_probability,failure_close_wait_seconds):
         self.failure_probability = failure_probability
@@ -167,7 +175,64 @@ def produce_const_delay_conn_info_str_and_start_bridges(
     
     return _produce_connection_info_str_and_start_bridges(
         num_nodes,plan_factory)
-    
+
+FLAPPING_NUM_NODES = 5
+def produce_flapping_info_str_and_start_bridges():
+    '''
+    Always assume that using 5 nodes.
+    '''
+    connection_info_dict = _produce_connection_info_dict(FLAPPING_NUM_NODES)
+    cohort_ids = connection_info_dict.keys()
+    # FIXME: hardcoded flapping num nodes, etc.
+    internally_connected_ids = cohort_ids[0:3]
+    singly_connected_ids = cohort_ids[3:]
+
+    singly_connected_pair_one = (
+        singly_connected_ids[0],internally_connected_ids[0])
+    singly_connected_pair_two = (
+        singly_connected_ids[1],internally_connected_ids[1])
+
+    # keys are local_cohort_id-s, values are plan_factory_dicts (keys
+    # to plan factories)
+    full_plan_factory_dict = {}
+    for local_cohort_id in connection_info_dict:
+        plan_factory_dict = {}
+        full_plan_factory_dict[local_cohort_id] = plan_factory_dict
+        
+        for remote_cohort_id in connection_info_dict:
+            if remote_cohort_id == local_cohort_id:
+                continue
+
+            if ((local_cohort_id in internally_connected_ids) and
+                (remote_cohort_id in internally_connected_ids)):
+                plan_factory_dict[remote_cohort_id] = PassThroughPlanFactory()
+
+            elif ((local_cohort_id in singly_connected_pair_one) and
+                  (remote_cohort_id in singly_connected_pair_one)):
+                # either local or remote are not in centrally
+                # connected group: check if they're singly connected
+                plan_factory_dict[remote_cohort_id] = PassThroughPlanFactory()
+            elif ((local_cohort_id in singly_connected_pair_two) and
+                  (remote_cohort_id in singly_connected_pair_two)):
+                # same as above elif condition
+                plan_factory_dict[remote_cohort_id] = PassThroughPlanFactory()
+            else:
+                # not connected
+                plan_factory_dict[remote_cohort_id] = DropPlanFactory()
+
+    to_return = ''
+    for local_cohort_id in connection_info_dict:
+        local_cohort_plan_factory_dict = (
+            full_plan_factory_dict[local_cohort_id])
+        
+        local_connection_info = connection_info_dict[local_cohort_id]
+        local_connection_info.start_all_bridges_remote_specific(
+            local_cohort_plan_factory_dict)
+        to_return += local_connection_info.produce_java_arg_str() + "|" 
+
+    return to_return
+            
+
 def _produce_connection_info_dict(num_nodes):
     '''
     @param {int} num_nodes
@@ -199,7 +264,6 @@ def _produce_connection_info_dict(num_nodes):
             local_connection_info.add_remote(remote_cohort_id,to_add)
     return connection_info_dict
 
-    
 
 def _produce_connection_info_str_and_start_bridges(num_nodes,
                                                    plan_factory):
@@ -226,4 +290,3 @@ def _produce_connection_info_str_and_start_bridges(num_nodes,
         to_return += local_connection_info.produce_java_arg_str() + "|" 
 
     return to_return
-        
