@@ -168,6 +168,41 @@ def produce_rand_fail_const_delay_conn_info_str_and_start_bridges(
     return _produce_connection_info_str_and_start_bridges(
         num_nodes,plan_factory)
 
+
+def produce_direct_connect_conn_info_str(num_nodes):
+    connection_info_dict = {}
+    
+    for i in range(0,num_nodes):
+        local_cohort_id = i
+        local_connection_info = CohortConnectionInfo(local_cohort_id)
+        connection_info_dict[local_cohort_id] = local_connection_info
+
+        for j in range(0,num_nodes):
+            remote_cohort_id = j
+            if local_cohort_id == remote_cohort_id:
+                continue
+
+            if remote_cohort_id in connection_info_dict:
+                remote_connection_info = connection_info_dict[remote_cohort_id]
+                to_add = remote_connection_info.get_reversed(local_cohort_id)
+                if to_add is None:
+                    assert False
+            else:
+                local_port = get_unique_tcp_port()
+                remote_port = get_unique_tcp_port()
+                to_add = RemoteDictElement(
+                    local_port,remote_port,local_port,remote_port)
+                
+            local_connection_info.add_remote(remote_cohort_id,to_add)
+
+    to_return = ''
+    for local_cohort_id in connection_info_dict:
+        local_connection_info = connection_info_dict[local_cohort_id]
+        to_return += local_connection_info.produce_java_arg_str() + "|"
+
+    return to_return
+
+
 def produce_const_delay_conn_info_str_and_start_bridges(
     num_nodes,connection_delay_seconds):
 
