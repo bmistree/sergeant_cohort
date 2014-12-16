@@ -15,6 +15,8 @@ import SergeantCohort.CohortInfo;
 import SergeantCohort.CohortParamContext;
 import SergeantCohort.CohortConnection.TCPCohortConnection;
 import SergeantCohort.ILeaderElectedListener;
+import SergeantCohort.LeaderNotificationSupplier;
+
 
 /**
    Start several nodes.  Whenever a node gets elected leader, log the
@@ -97,7 +99,9 @@ public class LeaderDuringTermTest
         // add listeners for each
         for (CohortManager cohort_manager : cohort_managers)
         {
-            cohort_manager.add_leader_elected_listener(
+            LeaderNotificationSupplier leader_notification_supplier =
+                cohort_manager.leader_notification_supplier;
+            leader_notification_supplier.add_leader_elected_listener(
                 leader_elected_listener);
         }
 
