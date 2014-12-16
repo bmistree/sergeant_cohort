@@ -12,6 +12,7 @@ import java.io.IOException;
 
 import SergeantCohort.CohortManager;
 import SergeantCohort.CohortInfo;
+import SergeantCohort.CohortParamContext;
 import SergeantCohort.CohortConnection.TCPCohortConnection;
 import SergeantCohort.IApplyEntryListener;
 
@@ -24,15 +25,21 @@ public class EntriesThroughputTest
 {
     public final static long COHORT_SIZE = 3L;
 
-    public final static int HEARTBEAT_TIMEOUT_PERIOD_MS = 500;
-    public final static int HEARTBEAT_SEND_PERIOD_MS = 150;
-    public final static int MAX_BATCH_SIZE = 20;
-
     public final static int NUM_ENTRIES_TO_REPLICATE_INDEX = 0;
     public final static int COHORT_PORTS_INDEX = 1;
     public final static int OUTPUT_FILENAME_INDEX = 2;
     public final static int HEARTBEAT_TIMEOUT_PERIOD_MS_INDEX = 3;
     public final static int ENTRY_SIZE_INDEX = 4;
+
+    public final static long BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS = 200L;
+    public final static int HEARTBEAT_TIMEOUT_PERIOD_MS = 500;
+    public final static int HEARTBEAT_SEND_PERIOD_MS = 150;
+    public final static int MAX_BATCH_SIZE = 20;
+    public final static CohortParamContext param_context =
+        new CohortParamContext(
+            BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS,
+            HEARTBEAT_TIMEOUT_PERIOD_MS,HEARTBEAT_SEND_PERIOD_MS,
+            MAX_BATCH_SIZE);
     
     public static ExternalizedCounter externalized_counter = null;
     
@@ -83,8 +90,7 @@ public class EntriesThroughputTest
             CohortManager cohort_manager =
                 new CohortManager(
                     connection_info,TCPCohortConnection.CONNECTION_FACTORY,
-                    cohort_id,heartbeat_timeout_period_ms,
-                    HEARTBEAT_SEND_PERIOD_MS, MAX_BATCH_SIZE);
+                    cohort_id,param_context);
             
             cohort_managers.add(cohort_manager);
         }

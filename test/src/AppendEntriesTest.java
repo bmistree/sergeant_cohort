@@ -5,6 +5,7 @@ import java.util.Set;
 import java.util.HashSet;
 
 import SergeantCohort.CohortManager;
+import SergeantCohort.CohortParamContext;
 import SergeantCohort.CohortInfo;
 import SergeantCohort.CohortConnection.TCPCohortConnection;
 import SergeantCohort.IApplyEntryListener;
@@ -17,10 +18,19 @@ import SergeantCohort.IApplyEntryListener;
 public class AppendEntriesTest
 {
     public final static long COHORT_SIZE = 3L;
+    
+    public final static long BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS = 200L;
     public final static int HEARTBEAT_TIMEOUT_PERIOD_MS = 500;
     public final static int HEARTBEAT_SEND_PERIOD_MS = 150;
     public final static int MAX_BATCH_SIZE = 20;
     public final static int NUM_ENTRIES = 100;
+    
+    public final static CohortParamContext param_context =
+        new CohortParamContext(
+            BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS,
+            HEARTBEAT_TIMEOUT_PERIOD_MS,HEARTBEAT_SEND_PERIOD_MS,
+            MAX_BATCH_SIZE);
+
     
     public static void main(String[] args)
     {
@@ -50,8 +60,7 @@ public class AppendEntriesTest
             CohortManager cohort_manager =
                 new CohortManager(
                     connection_info,TCPCohortConnection.CONNECTION_FACTORY,
-                    cohort_id,HEARTBEAT_TIMEOUT_PERIOD_MS,
-                    HEARTBEAT_SEND_PERIOD_MS, MAX_BATCH_SIZE);
+                    cohort_id,param_context);
 
             cohort_managers.add(cohort_manager);
             cohort_manager.add_apply_entry_listener(externalized_counter);
