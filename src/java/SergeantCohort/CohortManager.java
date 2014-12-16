@@ -26,33 +26,12 @@ public class CohortManager
                ILeaderDownListener, IAppendEntriesSupplier
 {
     public final static long UNKNOWN_LEADER_ID = -1;
-    
-    /**
-       How long to wait before retrying reelecting self.
-     */
-    public final static long BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS = 100L;
-    
-    /**
-       If we do not receive a heartbeat message in this period of ms,
-       then we determine that the connection is dead and notify
-       connection listeners.
-     */
-    protected final int heartbeat_timeout_period_ms;
-    /**
-       TCPCohortConnection should send a heartbeat this frequently.
-     */
-    protected final int heartbeat_send_period_ms;
-
-    /**
-       Force sending an append entries before timeout if we've
-       received this many entries.
-     */
-    protected final int max_batch_size;
-    protected int batch_counter = 0;
-    
     protected final static Random rand = new Random();
-
-    protected final Log log;
+    
+    private int batch_counter = 0;
+    private final CohortParamContext param_context;
+    
+    private final Log log;
     
     protected enum ManagerState
     {
@@ -133,23 +112,21 @@ public class CohortManager
     final public int quorum_size;
 
     /**
-       Debugging term: if true, then this node may try to become
-       leader itself.  Otherwise, will never try to become leader on
-       its own.
-     */
-    final protected boolean debug_can_be_leader;
+       @param connection_info --- Connection information that we
+       should use to connect to remote cohort nodes.
 
+       @param cohort_connection_factory --- Factory to use to generate
+       connections.
+
+       @param local_cohort_id
+     */
     public CohortManager(
         Set<CohortInfo.CohortInfoPair> connection_info,
         ICohortConnectionFactory cohort_connection_factory,
-        long local_cohort_id, int heartbeat_timeout_period_ms,
-        int heartbeat_send_period_ms, boolean debug_can_be_leader,
-        int max_batch_size)
+        long local_cohort_id, CohortParamContext param_context)
     {
         log = new Log(local_cohort_id);
-        
-        this.debug_can_be_leader = debug_can_be_leader;
-        this.max_batch_size = max_batch_size;
+        this.param_context = param_context;
         
         for (CohortInfo.CohortInfoPair pair : connection_info)
         {
@@ -167,29 +144,6 @@ public class CohortManager
         quorum_size = ((int)((connection_info.size() + 1)/2.)) + 1;
         
         this.local_cohort_id = local_cohort_id;
-        this.heartbeat_timeout_period_ms = heartbeat_timeout_period_ms;
-        this.heartbeat_send_period_ms = heartbeat_send_period_ms;
-    }
-    
-    /**
-       @param connection_info --- Connection information that we
-       should use to connect to remote cohort nodes.
-
-       @param cohort_connection_factory --- Factory to use to generate
-       connections.
-
-       @param local_cohort_id
-     */
-    public CohortManager(
-        Set<CohortInfo.CohortInfoPair> connection_info,
-        ICohortConnectionFactory cohort_connection_factory,
-        long local_cohort_id, int heartbeat_timeout_period_ms,
-        int heartbeat_send_period_ms, int max_batch_size)
-    {
-        this(
-            connection_info, cohort_connection_factory,
-            local_cohort_id, heartbeat_timeout_period_ms,
-            heartbeat_send_period_ms, true, max_batch_size);
     }
     
     /**
@@ -220,7 +174,7 @@ public class CohortManager
                 log.add_to_log(entry_to_try_to_add,view_number);
                 ++batch_counter;
                 // force sending log to followers
-                if ((batch_counter % max_batch_size) == 0)
+                if ((batch_counter % param_context.max_batch_size) == 0)
                 {
                     // send append to all
                     heartbeat_sending_service.send_heartbeat();
@@ -342,10 +296,6 @@ public class CohortManager
             state_lock.unlock();
         }
 
-        // Debugging boolean: if we cannot be leader, then don't
-        // nominate self to be leader.
-        if (! debug_can_be_leader)
-            return;
         
         CohortMessage.Builder cohort_message =
             CohortMessage.newBuilder();
@@ -357,7 +307,8 @@ public class CohortManager
         // not transitioned out of election then try to elect self
         // again.
         long max_time_to_wait_ms =
-            (1L<< num_times_called)*BASE_MAX_TIME_TO_WAIT_FOR_REELECTION_MS;
+            (1L<< num_times_called)*
+            param_context.base_max_time_to_wait_for_reelection_ms;
         long ms_to_wait_before_retry =
             (long)(rand.nextFloat() * max_time_to_wait_ms);
         
@@ -661,8 +612,8 @@ public class CohortManager
                 // start heartbeats
                 heartbeat_sending_service =
                     new HeartbeatSendingService(
-                        heartbeat_send_period_ms, cohort_connections,
-                        this);
+                        param_context.heartbeat_send_period_ms,
+                        cohort_connections, this);
                 heartbeat_sending_service.start();
                 leader_context =
                     new LeaderContext(cohort_connections,log,view_number);
@@ -823,12 +774,6 @@ public class CohortManager
 
         if (transition)
         {
-            // System.out.println(
-            //     "Node " + local_cohort_id +
-            //     " transitions to follower from view number " +
-            //     view_number + " to new view number " + 
-            //     received_view_number + " at state " + state);
-            
             view_number = received_view_number;
             current_leader_id = new_leader_id;
             if (current_leader_id != UNKNOWN_LEADER_ID)
@@ -845,7 +790,7 @@ public class CohortManager
 
             heartbeat_listening_service =
                 new HeartbeatListeningService(
-                    heartbeat_timeout_period_ms,this,
+                    param_context.heartbeat_timeout_period_ms,this,
                     new_leader_id,received_view_number);
             heartbeat_listening_service.start_service();
         }
