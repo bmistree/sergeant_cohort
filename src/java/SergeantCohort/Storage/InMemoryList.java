@@ -40,9 +40,15 @@ public class InMemoryList implements IStorage
     @Override
     public void append_entry(byte[] contents, long term)
     {
-        log.add(new LogEntry(contents,term));
+        append_entry(new LogEntry(contents,term));
     }
 
+    @Override
+    public void append_entry(LogEntry entry)
+    {
+        log.add(entry);
+    }
+    
     @Override
     public LogEntry get_entry(long index_to_get_from)
     {
@@ -55,6 +61,13 @@ public class InMemoryList implements IStorage
         log.set((int)index_to_set,entry);
     }
 
+    @Override
+    public void set_entry(long index_to_set, byte[] contents, long term)
+    {
+        LogEntry entry = new LogEntry(contents,term);
+        set_entry(index_to_set,entry);
+    }
+    
     @Override
     public void remove_entry(long index_to_rm)
     {
