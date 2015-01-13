@@ -70,6 +70,7 @@ public class Log
     {
         commit_index = new_index;
         try_apply();
+        storage.check_write_stably(commit_index);
     }
 
     /**
@@ -157,10 +158,11 @@ public class Log
         if (leader_commit_index > commit_index)
             commit_index = Math.min(leader_commit_index, storage.log_size() -1);
 
-        try_apply();        
+        try_apply();
+        storage.check_write_stably(commit_index);
         return true;
     }
-
+    
     protected void try_apply()
     {
         while(commit_index > last_applied)

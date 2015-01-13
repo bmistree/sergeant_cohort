@@ -78,7 +78,6 @@ public class InMemoryList implements IStorage
             FSLogEntry.Builder fs_log_entry= FSLogEntry.newBuilder();
             fs_log_entry.setIndex(i);
             fs_log_entry.setData(ByteString.copyFrom(log_entry.contents));
-
             try
             {
                 fs_log_entry.build().writeDelimitedTo(output_stream);
@@ -93,7 +92,6 @@ public class InMemoryList implements IStorage
         truncate_prefix(last_committed_index);
     }
 
-    
     /**
        Borrowed from logcabin reference implementation.  When this is
        called, we delete all log indices *prior* to this index.  (Note
