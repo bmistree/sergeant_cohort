@@ -7,9 +7,10 @@ message InstallSnapshot
     required uint64 nonce = 1;
     required uint64 view_number = 2;
     required uint64 leader_cohort_id = 3;
-    required uint64 last_included_term = 4;
-    required uint64 offset = 5;
-    required bytes data = 6;
-    required bool done = 7;
+    required uint64 last_included_index = 4;
+    required uint64 last_included_term = 5;
+    required uint64 offset = 6;
+    required bytes data = 7;
+    required bool done = 8;
 }
 
