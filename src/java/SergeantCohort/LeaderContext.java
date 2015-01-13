@@ -32,12 +32,9 @@ public class LeaderContext
        Keys are nonces, values are AppendEntries messages associated
        with nonce.
      */
-    // final protected List<AppendEntries> unacked_append_messages =
-    //     new ArrayList<AppendEntries>();
-    
-    // FIXME: check here if this is memory leak.
-    final protected Map<Long,AppendEntries> unacked_append_messages=
-        new HashMap<Long,AppendEntries>();
+    final protected LossyRPCRequestHolder<AppendEntries> unacked_append_messages =
+        new LossyRPCRequestHolder<AppendEntries>();
+
     
     public LeaderContext(
         Set<ICohortConnection> cohort_connections, Log log, long leader_term)
@@ -85,8 +82,8 @@ public class LeaderContext
     protected void about_to_send_append_entries(
         AppendEntries.Builder append_entries)
     {
-        unacked_append_messages.put(
-            append_entries.getNonce(),append_entries.build());
+        unacked_append_messages.add_request(
+            append_entries.build(), append_entries.getNonce());
     }
 
     /**
@@ -100,13 +97,15 @@ public class LeaderContext
         AppendEntriesResponse append_entries_response,
         long local_cohort_id,long view_number, long remote_cohort_id)
     {
-        AppendEntries in_response_to = unacked_append_messages.remove(
+        AppendEntries in_response_to = unacked_append_messages.get_request(
             append_entries_response.getNonce());
 
-        //// DEBUG
+        // we no longer have the associated append entries request (it
+        // timed out): we do not need to re-issue the command because
+        // we've been sending heartbeat append entries that should
+        // take care of it.
         if (in_response_to == null)
-            Util.force_assert("Received a reply for an unknown message.");
-        //// END DEBUG
+            return null;
 
         if (append_entries_response.getSuccess())
         {
