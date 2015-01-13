@@ -8,11 +8,19 @@ import java.util.ArrayList;
 
 import com.google.protobuf.ByteString;
 
+import SergeantCohort.Storage.IStorage;
+import SergeantCohort.Storage.InMemoryList;
+
 import ProtocolLibs.AppendEntriesProto.AppendEntries;
+
 
 public class Log
 {
-    protected final List<LogEntry> log = new ArrayList<LogEntry>();
+    protected final IStorage storage = new InMemoryList();
+    
+    // protected final List<LogEntry> log = new ArrayList<LogEntry>();
+
+    
     /**
        The last known externalized index in the log.  Starting at zero
        here because all logs start with a dummy entry (that way don't
@@ -44,7 +52,7 @@ public class Log
         // add an empty log entry so that don't have to special-case
         // having an empty log.  Note that commit_index, etc starts
         // appropriately.
-        log.add(new LogEntry(null,0));
+        storage.append_entry(null,0);
     }
 
     /**
@@ -70,13 +78,12 @@ public class Log
      */
     public synchronized void add_to_log(byte[] contents,long term)
     {
-        LogEntry log_entry = new LogEntry(contents,term);
-        log.add(log_entry);
+        storage.append_entry(contents,term);
     }
     
     public synchronized int size()
     {
-        return log.size();
+        return (int)storage.log_size();
     }
 
     public synchronized void add_apply_entry_listener(
@@ -113,7 +120,7 @@ public class Log
         // Reply false if log doesn't contain an entry at prevLogIndex
         // whose term matches prevLogTerm
         long msg_prev_log_index = append_entries.getPrevLogIndex();
-        if (msg_prev_log_index > (log.size() - 1))
+        if (msg_prev_log_index > (storage.log_size() - 1))
         {
             return false;
         }
@@ -121,22 +128,21 @@ public class Log
         // If an existing entry conflicts with a new one (same index
         // but different terms), delete the existing entry and all that
         // follow it
-        int insertion_index = ((int)msg_prev_log_index) + 1;
+        long insertion_index = msg_prev_log_index + 1;
         // true if a message conflicted with version 
         boolean conflict = false;
         for (ByteString entry : append_entries.getEntriesList())
         {
             byte[] entry_as_byte_array = entry.toByteArray();
-            LogEntry new_log_entry = new LogEntry(entry_as_byte_array,msg_term);
             
-            if (insertion_index >= log.size())
-                log.add(new_log_entry);
+            if (insertion_index >= storage.log_size())
+                storage.append_entry(entry_as_byte_array,msg_term);
             else
             {
-                LogEntry prev_log_entry = log.get(insertion_index);
+                LogEntry prev_log_entry = storage.get_entry(insertion_index);
                 if (prev_log_entry.term != msg_term)
                     conflict = true;
-                log.set(insertion_index,new_log_entry);
+                storage.set_entry(insertion_index,entry_as_byte_array,msg_term);
             }
             ++insertion_index;
         }
@@ -144,14 +150,14 @@ public class Log
         // if there was a conflict, then we need to delete all
         // subsequent entries that had been stored in log at insertion
         // index and later.
-        int number_of_tail_removes = log.size() - insertion_index;
-        for (int i = 0; i < number_of_tail_removes; ++i)
-            log.remove(log.size() -1 );
+        long number_of_tail_removes = storage.log_size() - insertion_index;
+        for (long i = 0; i < number_of_tail_removes; ++i)
+            storage.remove_entry(storage.log_size() -1 );
         
         // If leaderCommit > commitIndex, set commitIndex =
         // min(leaderCommit, index of last new entry)
         if (leader_commit_index > commit_index)
-            commit_index = Math.min(leader_commit_index, log.size() -1);
+            commit_index = Math.min(leader_commit_index, storage.log_size() -1);
 
         try_apply();        
         return true;
@@ -163,7 +169,7 @@ public class Log
         {
             ++last_applied;
             for (IApplyEntryListener listener : apply_entry_listener_set)
-                listener.apply_entry(log.get((int)last_applied).contents);
+                listener.apply_entry(storage.get_entry(last_applied).contents);
         }
     }
     
@@ -180,15 +186,15 @@ public class Log
         nonce_generator += 1;
         
         List<byte[]> new_entries = new ArrayList<byte[]>();
-        long prev_index = log.size() -1;
+        long prev_index = storage.log_size() -1;
         if (index_to_send_from != -1)
         {
             prev_index = Math.min(
-                index_to_send_from -1,log.size() - 1);
+                index_to_send_from -1,storage.log_size() - 1);
             // FIXME: using int here instead of long.
-            for (int i = (int)index_to_send_from; i < log.size(); ++i)
+            for (long i = index_to_send_from; i < storage.log_size(); ++i)
             {
-                LogEntry entry  = log.get(i);
+                LogEntry entry  = storage.get_entry(i);
                 new_entries.add(entry.contents);
             }
         }
@@ -207,7 +213,7 @@ public class Log
         // note: because added an element to log in constructor, don't
         // have to deal with edge case of empty log.
         to_return.setPrevLogIndex(prev_index);
-        to_return.setPrevLogTerm(log.get((int)prev_index).term);
+        to_return.setPrevLogTerm(storage.get_entry(prev_index).term);
         to_return.setLeaderCommitIndex(commit_index);
         return to_return;
     }
@@ -217,11 +223,10 @@ public class Log
      */
     public synchronized Long get_term_at_index(long index)
     {
-        if (index >= log.size())
+        if (index >= storage.log_size())
             return null;
 
-        LogEntry entry = log.get((int)index);
+        LogEntry entry = storage.get_entry(index);
         return entry.term;
     }
-    
 }
