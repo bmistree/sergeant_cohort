@@ -18,9 +18,10 @@ public class InMemoryList implements IStorage
        Eg.,
 
            log = [1,2,3]
-           log.get(2) // == 2
-           log.truncate(2) // log == [2,3]
-           log.get(2) // should == 2.
+           log.get(2) // == 3
+           log.prefix_truncate(1) // log == [2,3]
+           log.get(2) // should == 3.
+           log.size() // should be 3
            
        Therefore, we're keeping a mapping between the last index that
        we truncated from so that we can index into log.
@@ -39,7 +40,8 @@ public class InMemoryList implements IStorage
     public synchronized void truncate_prefix(long index_to_truncate_before)
     {
         long list_mapped_index = list_mapped_index(index_to_truncate_before);
-        for (int i = 0; i < (list_mapped_index - 1); ++i)
+        long num_removes = list_mapped_index;
+        for (int i = 0; i < num_removes; ++i)
             log.remove(0);
         base_offset_index = index_to_truncate_before;
     }
