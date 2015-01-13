@@ -1,5 +1,5 @@
 option java_package = "ProtocolLibs";
-option java_outer_classname = "AppendEntriesProto";
+option java_outer_classname = "InstallSnapshotProto";
 
 
 message InstallSnapshot
