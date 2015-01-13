@@ -114,7 +114,6 @@ public class Log
         long msg_term = append_entries.getViewNumber();
         long leader_commit_index = append_entries.getLeaderCommitIndex();
         
-        
         // Reply false if log doesn't contain an entry at prevLogIndex
         // whose term matches prevLogTerm
         long msg_prev_log_index = append_entries.getPrevLogIndex();

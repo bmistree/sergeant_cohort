@@ -32,10 +32,13 @@ public class LeaderContext
        Keys are nonces, values are AppendEntries messages associated
        with nonce.
      */
+    // final protected List<AppendEntries> unacked_append_messages =
+    //     new ArrayList<AppendEntries>();
+    
     // FIXME: check here if this is memory leak.
     final protected Map<Long,AppendEntries> unacked_append_messages=
         new HashMap<Long,AppendEntries>();
-
+    
     public LeaderContext(
         Set<ICohortConnection> cohort_connections, Log log, long leader_term)
     {
