@@ -24,7 +24,7 @@ public class InMemoryListTest
         // truncate and get to ensure that still get same expected
         // values.
         
-        InMemoryList list = new InMemoryList();
+        InMemoryList list = new InMemoryList(1);
 
         for (int i = 0; i < NUM_ENTRIES_TO_INSERT; ++i)
         {

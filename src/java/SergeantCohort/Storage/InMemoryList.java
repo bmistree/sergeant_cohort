@@ -3,13 +3,25 @@ package SergeantCohort.Storage;
 import java.util.List;
 import java.util.ArrayList;
 
+import java.io.FileOutputStream;
+import java.io.BufferedOutputStream;
+import java.io.FileNotFoundException;
+import java.io.IOException;
+
+import com.google.protobuf.ByteString;
+
 import SergeantCohort.Util;
 import SergeantCohort.LogEntry;
+
+import ProtocolLibs.FSLogEntryProto.FSLogEntry;
 
 public class InMemoryList implements IStorage
 {
     private final List<LogEntry> log = new ArrayList<LogEntry>();
-
+    private final long local_cohort_id;
+    private final static int MAX_ENTRIES_BEFORE_SNAPSHOT = 10;
+    
+    
     /**
        When we truncate our log from its prefix, the indices in log
        (the ArrayList above) do not match the indices of the actual
@@ -32,11 +44,64 @@ public class InMemoryList implements IStorage
            log.get(2 - base_offset_index)
      */
     private long base_offset_index = 0;
+
+    private BufferedOutputStream output_stream = null;
+
+    public InMemoryList(long local_cohort_id)
+    {
+        this.local_cohort_id = local_cohort_id;
+
+        try
+        {
+            output_stream = new BufferedOutputStream(
+                new FileOutputStream("log_" + local_cohort_id + ".bin"));
+        }
+        catch (FileNotFoundException ex)
+        {
+            ex.printStackTrace();
+            Util.force_assert("File exception in memory list");
+        }
+    }
+    
+    @Override
+    public synchronized void check_write_stably(long last_committed_index)
+    {
+        // do not have enough outstanding entries to justify flushing
+        // to disk; return.
+        if ((last_committed_index - base_offset_index) < MAX_ENTRIES_BEFORE_SNAPSHOT)
+            return;
+
+        // write indices [base_offset_index,last_committed_index) to fs.
+        for (long i = base_offset_index; i < last_committed_index; ++i)
+        {
+            LogEntry log_entry = get_entry(i);
+            FSLogEntry.Builder fs_log_entry= FSLogEntry.newBuilder();
+            fs_log_entry.setIndex(i);
+            fs_log_entry.setData(ByteString.copyFrom(log_entry.contents));
+
+            try
+            {
+                fs_log_entry.build().writeDelimitedTo(output_stream);
+            }
+            catch (IOException ex)
+            {
+                ex.printStackTrace();
+                Util.force_assert(
+                    "File exception in memory list when writing.");
+            }
+        }
+        truncate_prefix(last_committed_index);
+    }
+
     
     /**
-       @see IStorage.truncate_suffix
+       Borrowed from logcabin reference implementation.  When this is
+       called, we delete all log indices *prior* to this index.  (Note
+       1: Cannot be undone.  Note 2: does not delete
+       index_to_truncate_before itself.)
+
+       Currently exposed for testing (and that's the only reason).
      */
-    @Override
     public synchronized void truncate_prefix(long index_to_truncate_before)
     {
         long list_mapped_index = list_mapped_index(index_to_truncate_before);
@@ -52,17 +117,6 @@ public class InMemoryList implements IStorage
         return external_index - base_offset_index;
     }
     
-    /**
-       @see IStorage.truncate_suffix
-     */
-    @Override
-    public synchronized void truncate_suffix(long index_to_truncate_after)
-    {
-        long num_removes = log_size() - index_to_truncate_after - 1;
-        long list_mapped_index = list_mapped_index(index_to_truncate_after);
-        for (int i = 0; i < num_removes; ++i)
-            log.remove((int)(list_mapped_index + 1));
-    }
 
     @Override
     public synchronized long log_size()

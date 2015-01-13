@@ -16,7 +16,7 @@ import ProtocolLibs.AppendEntriesProto.AppendEntries;
 
 public class Log
 {
-    protected final IStorage storage = new InMemoryList();
+    protected final IStorage storage;
     
     /**
        The last known externalized index in the log.  Starting at zero
@@ -46,11 +46,12 @@ public class Log
     public Log(long local_cohort_id)
     {
         this.local_cohort_id = local_cohort_id;
+        storage = new InMemoryList(local_cohort_id);
         
         // add an empty log entry so that don't have to special-case
         // having an empty log.  Note that commit_index, etc starts
         // appropriately.
-        storage.append_entry(null,0);
+        storage.append_entry(new byte [0],0);
     }
 
     /**
