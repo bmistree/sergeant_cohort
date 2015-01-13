@@ -81,7 +81,17 @@
           <param name="dest_jar" value="entries_throughput.jar"/>
         </antcall>
     </target>
-        
+
+    <target
+        name="jar_in_memory_list_test"
+        depends="compile">
+        <antcall target="make_jar">
+          <param name="main_class" value="InMemoryListTest"/>
+          <param name="dest_jar" value="in_memory_list_test.jar"/>
+        </antcall>
+    </target>
+
+    
     
     <!-- Make a jar -->
     <target
