@@ -1,0 +1,15 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "AppendEntriesProto";
+
+
+message InstallSnapshot
+{
+    required uint64 nonce = 1;
+    required uint64 view_number = 2;
+    required uint64 leader_cohort_id = 3;
+    required uint64 last_included_term = 4;
+    required uint64 offset = 5;
+    required bytes data = 6;
+    required bool done = 7;
+}
+

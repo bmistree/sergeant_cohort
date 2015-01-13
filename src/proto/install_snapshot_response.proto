@@ -1,0 +1,9 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "CohortMessageProto";
+
+
+message InstallSnapshotResponse
+{
+    required uint64 nonce = 1;
+    required uint64 view_number = 2;
+}

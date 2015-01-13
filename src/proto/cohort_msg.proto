@@ -5,6 +5,8 @@ import "append_entries.proto";
 import "append_entries_response.proto";
 import "election_proposal.proto";
 import "election_proposal_response.proto";
+import "install_snapshot.proto";
+import "install_snapshot_response.proto";
 
 message CohortMessage
 {
@@ -12,4 +14,6 @@ message CohortMessage
     optional AppendEntriesResponse append_entries_response = 2;
     optional ElectionProposal election_proposal = 3;
     optional ElectionProposalResponse election_proposal_response = 4;
+    optional InstallSnapshot install_snapshot = 5;
+    optional InstallSnapshotResponse install_snapshot_response = 6;
 }
