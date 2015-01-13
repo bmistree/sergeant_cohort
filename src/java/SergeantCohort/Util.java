@@ -9,4 +9,16 @@ public class Util
         assert(false);
         System.exit(-1);
     }
+
+
+    public static class LongNonceGenerator
+    {
+        private long internal_val = 0;
+
+        public synchronized long increment_and_get()
+        {
+            internal_val += 1;
+            return internal_val;
+        }
+    }
 }

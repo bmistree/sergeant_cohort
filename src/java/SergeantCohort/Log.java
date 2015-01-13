@@ -18,22 +18,20 @@ public class Log
 {
     protected final IStorage storage = new InMemoryList();
     
-    // protected final List<LogEntry> log = new ArrayList<LogEntry>();
-
-    
     /**
        The last known externalized index in the log.  Starting at zero
        here because all logs start with a dummy entry (that way don't
        have to special-case having empty log).
      */
-    protected long commit_index = 0;
+    private long commit_index = 0;
 
     /**
        Increment each time that we create an AppendEntries.Builder in
        leader_append.  That way, we can match append entries requests
        to their returned responses.
      */
-    protected long nonce_generator = 0;
+    private final Util.LongNonceGenerator nonce_generator =
+        new Util.LongNonceGenerator();
 
     /**
        Index of highest log entry applied to state machine.
@@ -183,8 +181,6 @@ public class Log
         long view_number,long leader_cohort_id,
         long index_to_send_from)
     {
-        nonce_generator += 1;
-        
         List<byte[]> new_entries = new ArrayList<byte[]>();
         long prev_index = storage.log_size() -1;
         if (index_to_send_from != -1)
@@ -200,7 +196,7 @@ public class Log
         }
 
         AppendEntries.Builder to_return = AppendEntries.newBuilder();
-        to_return.setNonce(nonce_generator);
+        to_return.setNonce(nonce_generator.increment_and_get());
         to_return.setViewNumber(view_number);
         to_return.setLeaderCohortId(leader_cohort_id);
         
