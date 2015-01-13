@@ -1,0 +1,8 @@
+option java_package = "ProtocolLibs";
+option java_outer_classname = "FSLogEntryProto";
+
+message FSLogEntry
+{
+    required uint64 index = 1;
+    required bytes data = 2;
+}
