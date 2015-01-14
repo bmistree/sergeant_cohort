@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.ArrayList;
 
 import java.io.FileOutputStream;
+import java.io.FileInputStream;
 import java.io.BufferedOutputStream;
+import java.io.BufferedInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 
@@ -20,6 +22,7 @@ public class InMemoryList implements IStorage
     private final List<LogEntry> log = new ArrayList<LogEntry>();
     private final long local_cohort_id;
     private final static int MAX_ENTRIES_BEFORE_SNAPSHOT = 10;
+    private final String log_name;
     
     
     /**
@@ -50,11 +53,11 @@ public class InMemoryList implements IStorage
     public InMemoryList(long local_cohort_id)
     {
         this.local_cohort_id = local_cohort_id;
-
+        this.log_name = "log_" + local_cohort_id + ".bin";
         try
         {
             output_stream = new BufferedOutputStream(
-                new FileOutputStream("log_" + local_cohort_id + ".bin"));
+                new FileOutputStream(this.log_name));
         }
         catch (FileNotFoundException ex)
         {
@@ -78,6 +81,7 @@ public class InMemoryList implements IStorage
             FSLogEntry.Builder fs_log_entry= FSLogEntry.newBuilder();
             fs_log_entry.setIndex(i);
             fs_log_entry.setData(ByteString.copyFrom(log_entry.contents));
+            fs_log_entry.setTerm(log_entry.term);
             try
             {
                 fs_log_entry.build().writeDelimitedTo(output_stream);
@@ -138,6 +142,30 @@ public class InMemoryList implements IStorage
     public synchronized LogEntry get_entry(long index_to_get_from)
     {
         long list_mapped_index = list_mapped_index(index_to_get_from);
+        if (list_mapped_index < 0)
+        {
+            try
+            {
+                // read from disk if entry is too old
+                FileInputStream file_input_stream =
+                    new FileInputStream(log_name);
+                BufferedInputStream bis =
+                    new BufferedInputStream(file_input_stream);
+
+                FSLogEntry entry = null;
+                for (long i = 0; i < index_to_get_from + 1; ++i)
+                    entry = FSLogEntry.parseDelimitedFrom(bis);
+
+                return new LogEntry(
+                    entry.getData().toByteArray(),entry.getTerm());
+            }
+            catch (IOException ex)
+            {
+                ex.printStackTrace();
+                Util.force_assert("Had trouble reading from log file.");
+            }
+        }
+        
         return log.get((int)list_mapped_index);
     }
 
